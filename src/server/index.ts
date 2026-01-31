@@ -1,4 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import path from 'path';
 import { GameEngine } from '../engine/GameEngine';
 import { MapRenderer } from '../visualization/MapRenderer';
 import { scenarios } from '../scenarios';
@@ -14,14 +17,73 @@ import {
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Create HTTP server and Socket.IO instance
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+
 // Initialize game engine and load scenarios
 const gameEngine = new GameEngine();
 scenarios.forEach((scenario) => gameEngine.loadScenario(scenario));
 
 const renderer = new MapRenderer();
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log(`WebSocket client connected: ${socket.id}`);
+
+  socket.on('subscribe', (gameId: string) => {
+    socket.join(`game:${gameId}`);
+    console.log(`Client ${socket.id} subscribed to game ${gameId}`);
+
+    // Send current game state immediately upon subscription
+    const gameState = gameEngine.getGame(gameId);
+    const scenario = gameEngine.getScenario(gameState?.scenarioId || '');
+    const currentRoom = gameEngine.getCurrentRoom(gameId);
+    const allRooms = gameEngine.getAllRooms(gameId);
+
+    if (gameState && scenario && currentRoom) {
+      socket.emit('gameStateUpdate', {
+        gameState,
+        scenario,
+        currentRoom,
+        allRooms,
+      });
+      console.log(`Sent initial game state to client ${socket.id}`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`WebSocket client disconnected: ${socket.id}`);
+  });
+});
+
+// Helper function to emit game state updates
+const emitGameStateUpdate = (gameId: string) => {
+  const gameState = gameEngine.getGame(gameId);
+  const scenario = gameEngine.getScenario(gameState?.scenarioId || '');
+  const currentRoom = gameEngine.getCurrentRoom(gameId);
+  const allRooms = gameEngine.getAllRooms(gameId);
+
+  if (gameState && scenario && currentRoom) {
+    io.to(`game:${gameId}`).emit('gameStateUpdate', {
+      gameState,
+      scenario,
+      currentRoom,
+      allRooms,
+    });
+  }
+};
+
 // Middleware
 app.use(express.json());
+
+// Serve static files for Socket.IO client
+app.use(express.static(path.join(__dirname, '../visualization/public')));
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -47,6 +109,14 @@ const handleError = (res: Response, error: unknown, statusCode: number = 500) =>
  */
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+/**
+ * Serve visualization page
+ */
+app.get('/visualize/:gameId', (_req: Request, res: Response) => {
+  const visualizationPath = path.join(__dirname, '../visualization/public/index.html');
+  res.sendFile(visualizationPath);
 });
 
 /**
@@ -95,6 +165,9 @@ app.post('/games', (req: Request, res: Response) => {
     const allRooms = gameEngine.getAllRooms(gameState.gameId);
     const visualization = renderer.render(gameState, scenario, currentRoom, allRooms);
     console.log('\n' + visualization + '\n');
+
+    // Emit initial game state to WebSocket clients
+    emitGameStateUpdate(gameState.gameId);
 
     res.status(201).json({
       gameId: gameState.gameId,
@@ -192,6 +265,9 @@ app.post('/games/:gameId/move', (req: Request, res: Response) => {
       console.log('\n' + actionResult + '\n');
     }
 
+    // Emit game state update to WebSocket clients
+    emitGameStateUpdate(gameId);
+
     res.json(result);
   } catch (error) {
     handleError(res, error);
@@ -251,6 +327,9 @@ app.post('/games/:gameId/interact', (req: Request, res: Response) => {
       console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
     }
 
+    // Emit game state update to WebSocket clients
+    emitGameStateUpdate(gameId);
+
     res.json(result);
   } catch (error) {
     handleError(res, error);
@@ -286,6 +365,9 @@ app.post('/games/:gameId/solve', (req: Request, res: Response) => {
       console.log('\n' + visualization);
       console.log('\n' + actionResult + '\n');
     }
+
+    // Emit game state update to WebSocket clients
+    emitGameStateUpdate(gameId);
 
     res.json(result);
   } catch (error) {
@@ -342,9 +424,10 @@ app.get('/games/:gameId/inventory', (req: Request, res: Response) => {
 });
 
 // Start server
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`\n🚀 AI Agent Competition Platform`);
   console.log(`📡 Server running on http://localhost:${port}`);
+  console.log(`🔌 WebSocket server ready on ws://localhost:${port}`);
   console.log(`\n Available scenarios:`);
   scenarios.forEach((s) => {
     console.log(`  - ${s.id}: ${s.name} (${s.difficulty})`);

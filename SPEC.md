@@ -25,6 +25,7 @@ Built with TypeScript, Node.js, and Express for type safety and rapid developmen
 - **FR7**: Persist game state and allow game resume/replay
 - **FR8**: Render ASCII visualization of map and agent position after each action
 - **FR9**: Provide interactive CLI client for human players to play the escape room
+- **FR10**: Provide real-time web-based visualization with live updates via WebSocket
 
 ### Non-Functional Requirements
 - **NFR1**: API response time < 100ms for typical operations
@@ -38,24 +39,25 @@ Built with TypeScript, Node.js, and Express for type safety and rapid developmen
 ### High-Level Architecture
 
 ```
-┌──────────────────────┐          ┌──────────────────────┐
-│   Agent Clients      │          │  Interactive CLI     │
-│  (Any Language via   │          │  (Human Player)      │
-│   REST API)          │          │                      │
-└──────────┬───────────┘          └──────────┬───────────┘
-           │                                  │
-           │          HTTP/REST               │
-           └──────────────┬───────────────────┘
+┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
+│   Agent Clients      │   │  Interactive CLI     │   │  Web Visualization   │
+│  (Any Language via   │   │  (Human Player)      │   │   (Browser)          │
+│   REST API)          │   │                      │   │                      │
+└──────────┬───────────┘   └──────────┬───────────┘   └──────────┬───────────┘
+           │                          │                          │
+           │        HTTP/REST         │         WebSocket        │
+           └──────────────┬───────────┴──────────────────────────┘
                           │
-        ┌─────────────────▼─────────────────────────────┐
-        │            REST API Layer                      │
-        │  - Authentication                              │
-        │  - Request Validation                          │
-        │  - Response Formatting                         │
-        └─────────────────┬─────────────────────────────┘
+        ┌─────────────────▼─────────────────────────────────────┐
+        │         REST API + WebSocket Layer                     │
+        │  - Authentication                                      │
+        │  - Request Validation                                  │
+        │  - Response Formatting                                 │
+        │  - Real-time State Broadcasting (Socket.IO)            │
+        └─────────────────┬─────────────────────────────────────┘
                           │
-        ┌─────────────────▼─────────────────────────────┐
-        │          Game Engine Core                      │
+        ┌─────────────────▼─────────────────────────────────────┐
+        │          Game Engine Core                              │
         │  ┌───────────────────────────────────┐        │
         │  │  State Manager                     │        │
         │  │  - Game state                      │        │
@@ -155,7 +157,7 @@ Tracks and scores agent performance.
 
 ### 4.6 Visualization System
 
-Renders ASCII art representation of game state to console.
+Provides both console-based ASCII art and web-based real-time visualization of game state.
 
 **Responsibilities:**
 - Generate 2D map layout from room definitions
@@ -164,14 +166,28 @@ Renders ASCII art representation of game state to console.
 - Indicate discovered vs undiscovered rooms
 - Display inventory and challenge status
 - Update visualization after each agent action
+- Broadcast state changes to connected web clients via WebSocket
 
-**Visualization Features:**
+**ASCII Visualization Features:**
 - ASCII art map with box-drawing characters
 - Agent represented by `@` symbol
 - Rooms: explored (light), current (highlighted), unexplored (dark/hidden)
 - Doors: open `─`, locked `▓`, one-way `→`
 - Objects and challenges indicated with symbols
 - Color coding (if terminal supports): current room (cyan), exit (green), locked (red)
+
+**Web Visualization Features (NEW):**
+- **Real-time Updates**: WebSocket-based live synchronization with game state
+- **Interactive Map**: Visual grid layout with rooms as styled boxes
+- **Room States**: Current (cyan/glowing), Exit (green), Locked (red), Visited, Unknown (dashed)
+- **Connections**: Visual lines showing paths between rooms
+- **Live Stats Dashboard**: Turn count, score, challenges completed, rooms explored, elapsed time
+- **Current Room Panel**: Description, exits, objects, active challenges
+- **Inventory Display**: Visual list of collected items
+- **Challenge Tracking**: Completed vs incomplete challenges with status indicators
+- **Responsive Design**: Works on desktop and mobile browsers
+- **Connection Status**: Visual indicator showing WebSocket connection state
+- **Auto-open**: CLI can automatically launch browser with `--visualize` flag
 
 ### 4.7 Interactive CLI Client
 
@@ -226,10 +242,11 @@ Game saved. Goodbye!
 ```
 
 **Implementation:**
-- Built with Commander.js or similar CLI framework
-- Readline for interactive input
+- Built with Readline for interactive input
 - Connects to REST API (same as agent SDKs)
-- Separate npm script: `npm run play`
+- Optional web visualization via `--visualize` flag
+- Cross-platform browser opening support
+- Separate npm scripts: `npm run play` and `npm run play:visual`
 
 **Usage:**
 ```bash
@@ -239,12 +256,24 @@ npm run dev
 # In another terminal, start the interactive CLI
 npm run play
 
-# Or specify a scenario
-npm run play -- --scenario scenario_1
+# Or start with web visualization (auto-opens browser)
+npm run play:visual
 
-# Or connect to remote server
-npm run play -- --server http://remote-host:3000
+# Or use the flag directly
+npm run play -- --visualize
+
+# Future options (not yet implemented):
+# npm run play -- --scenario scenario_1
+# npm run play -- --server http://remote-host:3000
 ```
+
+**Web Visualization:**
+When using `--visualize` flag:
+1. CLI starts normally
+2. Browser automatically opens to visualization page
+3. Start a game with `start <scenario_id>`
+4. Web page shows live updates as you play
+5. Manual URL: `http://localhost:3000/visualize/{gameId}`
 
 ## 5. Game Mechanics
 
@@ -404,6 +433,65 @@ Response 409: Invalid State
   "message": "This game has already ended"
 }
 ```
+
+### 6.4 Web Visualization
+
+#### Serve Visualization Page
+```http
+GET /visualize/{game_id}
+
+Response 200:
+Returns HTML page with embedded visualization client
+```
+
+The visualization page automatically:
+- Connects to the WebSocket server
+- Subscribes to game updates for the specified game ID
+- Renders the game state in real-time
+
+## 6.5 WebSocket API (NEW)
+
+The platform uses Socket.IO for real-time communication with web visualization clients.
+
+**Connection:**
+```javascript
+// Client connects to server
+const socket = io('http://localhost:3000');
+
+// Subscribe to game updates
+socket.emit('subscribe', gameId);
+
+// Listen for game state updates
+socket.on('gameStateUpdate', (data) => {
+  // data contains: { gameState, scenario, currentRoom, allRooms }
+});
+```
+
+**Events:**
+
+| Event | Direction | Description | Payload |
+|-------|-----------|-------------|---------|
+| `connect` | Server → Client | Socket connection established | - |
+| `disconnect` | Server → Client | Socket connection closed | - |
+| `subscribe` | Client → Server | Subscribe to game updates | `gameId: string` |
+| `gameStateUpdate` | Server → Client | Game state changed | `{ gameState, scenario, currentRoom, allRooms }` |
+
+**Game State Update Payload:**
+```typescript
+{
+  gameState: GameState,      // Complete game state
+  scenario: Scenario,        // Scenario definition
+  currentRoom: Room,         // Current room details
+  allRooms: Room[]          // All rooms in scenario
+}
+```
+
+**When Updates Are Sent:**
+- When a game is created
+- After each move action
+- After each interact action (take/use)
+- After each solve action
+- After any action that changes game state
 
 ## 7. Data Models
 
@@ -661,9 +749,10 @@ Track and rank agents by:
 - **Framework**: Express - lightweight, flexible, large ecosystem
 - **Runtime**: Node.js 20+
 - **Type Safety**: Zod for runtime validation
-- **Database**: JSON files for scenarios, SQLite for game state/logs
+- **Database**: JSON files for scenarios, SQLite for game state/logs (future)
 - **Development**: tsx for hot-reload during development
 - **Visualization**: chalk (colors), boxen (borders), custom ASCII renderer
+- **WebSocket**: Socket.IO v4.8+ for real-time web visualization updates
 
 ### Agent SDK
 - **Primary SDK**: TypeScript/JavaScript client library
@@ -671,10 +760,20 @@ Track and rank agents by:
 - Simple HTTP client - agents can be written in any language
 
 ### Interactive CLI Client
-- **CLI Framework**: Commander.js for command parsing
-- **Input**: Readline for REPL interface
-- **Output**: Uses same visualization system as server
-- **Features**: Auto-complete, command history, help system
+- **CLI Framework**: Readline for REPL interface (Commander.js available for future use)
+- **Input**: Readline for interactive prompt
+- **Output**: Uses ASCII visualization system from server
+- **Features**: Command history, help system, shorthand commands
+- **Visualization Mode**: `--visualize` flag to auto-open web browser
+
+### Web Visualization Client (NEW)
+- **Architecture**: Single-page HTML with embedded CSS/JS
+- **WebSocket Client**: Socket.IO client (loaded via CDN)
+- **Rendering**: Vanilla JavaScript with DOM manipulation
+- **Styling**: Modern CSS with gradients, flexbox, grid, animations
+- **Real-time**: Listens to `gameStateUpdate` events and re-renders UI
+- **Responsive**: Works on desktop and mobile browsers
+- **No Build Required**: Pure HTML/CSS/JS, no bundler or framework
 
 ### Testing & Development
 - **API Testing**: Jest with supertest
@@ -685,27 +784,36 @@ Track and rank agents by:
 
 ## 11. Implementation Phases
 
-### Phase 1: Core Foundation
-- [ ] Basic REST API server
-- [ ] Simple map system (3-5 rooms with position coordinates)
-- [ ] State management
-- [ ] Move and examine actions
-- [ ] Single scenario
-- [ ] ASCII map visualization renderer
-- [ ] Console output after each action
-- [ ] Interactive CLI client for human play
+### Phase 1: Core Foundation ✅ COMPLETED
+- [x] Basic REST API server
+- [x] Simple map system (3-5 rooms with position coordinates)
+- [x] State management
+- [x] Move and examine actions
+- [x] Single scenario (library_escape)
+- [x] ASCII map visualization renderer
+- [x] Console output after each action
+- [x] Interactive CLI client for human play
 
-### Phase 2: Challenge System
-- [ ] Challenge framework
-- [ ] 2-3 challenge types implemented
-- [ ] Solution validation
-- [ ] Hint system
+### Phase 2: Challenge System ✅ COMPLETED
+- [x] Challenge framework
+- [x] 2-3 challenge types implemented (logic, riddle)
+- [x] Solution validation
+- [x] Hint system
 
-### Phase 3: Evaluation & Persistence
-- [ ] Turn/time tracking
-- [ ] Scoring system
-- [ ] Game state persistence
+### Phase 3: Evaluation & Persistence ✅ PARTIALLY COMPLETED
+- [x] Turn/time tracking
+- [x] Scoring system
+- [ ] Game state persistence (in-memory only, no DB yet)
 - [ ] Action logging
+
+### Phase 3.5: Real-time Web Visualization ✅ COMPLETED (NEW)
+- [x] WebSocket integration (Socket.IO)
+- [x] Real-time game state broadcasting
+- [x] Web-based visualization UI
+- [x] Interactive map with live updates
+- [x] CLI `--visualize` flag for auto-opening browser
+- [x] Connection status indicators
+- [x] Responsive design for desktop and mobile
 
 ### Phase 4: Agent Experience
 - [ ] TypeScript/JavaScript SDK
@@ -756,18 +864,22 @@ Track and rank agents by:
 
 ## 14. Open Questions & Decisions
 
+### Resolved
+- ✅ **Visualization Mode**: Implemented as optional - console ASCII always on, web visualization via `--visualize` flag
+- ✅ **Map Layout**: Manual positioning required in scenario files (provides precise control)
+- ✅ **State Storage**: Currently in-memory, can add persistence later
+
+### Open
 1. **API Authentication**: Simple API keys or JWT tokens?
-2. **State Storage**: In-memory (with snapshots) or persistent from start?
-3. **Scenario Format**: JSON files or database records?
+2. **State Storage Enhancement**: Add SQLite/database persistence for game history?
+3. **Scenario Format**: Keep as TypeScript files or migrate to JSON?
 4. **Action Validation**: Strict (reject invalid) or lenient (warn but allow)?
 5. **Partial Observability**: Should agents see the full room state or discover gradually?
 6. **LLM Integration**: Should the platform support LLM-based agents with specific prompting?
-7. **Visualization Mode**: Always-on console output, or configurable/optional for headless runs?
-8. **Map Layout**: Auto-calculate room positions or require manual positioning in scenario files?
 
 ---
 
-**Document Version**: 1.3
-**Last Updated**: 2026-01-23
-**Implementation Language**: TypeScript (Node.js + Express)
-**Status**: Initial Draft - Updated for TypeScript + ASCII Visualization + CLI Client
+**Document Version**: 1.4
+**Last Updated**: 2026-01-31
+**Implementation Language**: TypeScript (Node.js + Express + Socket.IO)
+**Status**: Active Development - Core features complete, web visualization implemented

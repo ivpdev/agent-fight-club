@@ -1,5 +1,6 @@
 import readline from 'readline';
 import chalk from 'chalk';
+import { exec } from 'child_process';
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 
@@ -8,11 +9,17 @@ interface GameSession {
   scenarioId: string;
 }
 
+interface CLIOptions {
+  visualize: boolean;
+}
+
 class CLIClient {
   private rl: readline.Interface;
   private session: GameSession | null = null;
+  private options: CLIOptions;
 
-  constructor() {
+  constructor(options: CLIOptions) {
+    this.options = options;
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -51,7 +58,32 @@ class CLIClient {
     console.log(chalk.bold.cyan('\n╔════════════════════════════════════════════╗'));
     console.log(chalk.bold.cyan('║  AI Agent Competition Platform - CLI      ║'));
     console.log(chalk.bold.cyan('╚════════════════════════════════════════════╝\n'));
+    if (this.options.visualize) {
+      console.log(chalk.yellow('🌐 Visualization mode enabled'));
+      console.log(chalk.gray('Browser will open automatically when you start a game\n'));
+    }
     console.log(chalk.gray('Type "help" for available commands\n'));
+  }
+
+  private openBrowser(url: string) {
+    const platform = process.platform;
+    let command: string;
+
+    if (platform === 'darwin') {
+      command = `open "${url}"`;
+    } else if (platform === 'win32') {
+      command = `start "" "${url}"`;
+    } else {
+      command = `xdg-open "${url}"`;
+    }
+
+    exec(command, (error) => {
+      if (error) {
+        console.log(chalk.yellow(`\nCouldn't open browser automatically. Visit: ${url}`));
+      } else {
+        console.log(chalk.green(`\n🌐 Browser opened: ${url}\n`));
+      }
+    });
   }
 
   private async handleCommand(input: string) {
@@ -147,6 +179,11 @@ class CLIClient {
   private printHelp() {
     console.log(chalk.bold('\nAvailable Commands:\n'));
 
+    if (this.options.visualize) {
+      console.log(chalk.yellow('  🌐 Visualization mode is enabled'));
+      console.log(chalk.gray('     Browser will open when you start a game\n'));
+    }
+
     const commands = [
       ['start <scenario>', 'Start a new game with the specified scenario'],
       ['scenarios, list', 'List available scenarios'],
@@ -227,6 +264,12 @@ class CLIClient {
       };
 
       console.log(chalk.green(`\n✓ Game started! Game ID: ${data.gameId}\n`));
+
+      // Open visualization if enabled
+      if (this.options.visualize) {
+        const visualizeUrl = `${SERVER_URL}/visualize/${data.gameId}`;
+        this.openBrowser(visualizeUrl);
+      }
 
       // Show initial state
       const room = data.initialState.currentRoom;
@@ -494,6 +537,12 @@ class CLIClient {
   }
 }
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const options: CLIOptions = {
+  visualize: args.includes('--visualize') || args.includes('-v'),
+};
+
 // Start the CLI
-const client = new CLIClient();
+const client = new CLIClient(options);
 client.start();

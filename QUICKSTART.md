@@ -26,6 +26,25 @@ In a separate terminal:
 npm run play
 ```
 
+### 3. Play with Live Web Visualization (NEW!)
+
+For a visual browser-based experience that updates in real-time:
+
+```bash
+npm run play:visual
+```
+
+Or use the flag directly:
+
+```bash
+npm run play -- --visualize
+```
+
+This will:
+- Start the interactive CLI as usual
+- Automatically open your browser to a live visualization page
+- Show the game map, rooms, inventory, and stats updating in real-time as you play
+
 ## Playing the Game
 
 Once in the CLI, you can use these commands:
@@ -140,6 +159,8 @@ See [SPEC.md](./SPEC.md) for complete API documentation.
 
 ## Visualization
 
+### Console ASCII Visualization
+
 The server console displays ASCII art visualization after each action:
 - Map layout with room positions
 - Current room highlighted in cyan
@@ -147,6 +168,31 @@ The server console displays ASCII art visualization after each action:
 - Visited vs unvisited rooms
 - Inventory and challenge status
 - Turn count and score
+
+### Web-Based Live Visualization (NEW!)
+
+Use `npm run play:visual` or add the `--visualize` flag to automatically open a beautiful web-based visualization in your browser:
+
+**Features:**
+- 🗺️ **Interactive Map**: Visual representation of rooms with connections
+- 👤 **Live Position**: See the agent's current position highlighted
+- 📊 **Real-time Stats**: Turn count, score, challenges completed, rooms explored
+- 🎒 **Inventory Display**: Visual list of collected items
+- 🔄 **Auto-updates**: Syncs with game state via WebSocket (no refresh needed)
+- 🎨 **Beautiful UI**: Gradient backgrounds, smooth animations, and intuitive layout
+
+**How it works:**
+1. Start the server: `npm run dev`
+2. Start CLI with visualization: `npm run play:visual`
+3. Browser opens automatically to the visualization page
+4. Start a game: `start library_escape`
+5. The web page updates in real-time as you play!
+
+**Manual access:**
+You can also manually open the visualization for any active game:
+```
+http://localhost:3000/visualize/{gameId}
+```
 
 ## Creating Custom Scenarios
 
