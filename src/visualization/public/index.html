@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0a0a0a;
             color: #fff;
             padding: 20px;
             min-height: 100vh;
@@ -29,8 +29,9 @@
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
+            background: #1a1a1a;
+            border: 3px solid #FFD700;
+            border-radius: 0;
         }
 
         h1 {
@@ -48,8 +49,9 @@
 
         .status-item {
             padding: 5px 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            background: #000;
+            border: 2px solid #FFD700;
+            border-radius: 0;
             margin: 5px;
         }
 
@@ -61,16 +63,16 @@
         }
 
         .panel {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 10px;
+            background: #1a1a1a;
+            border: 3px solid #FFD700;
+            border-radius: 0;
             padding: 20px;
-            backdrop-filter: blur(10px);
         }
 
         .panel h2 {
             margin-bottom: 15px;
-            color: #64ffda;
-            border-bottom: 2px solid #64ffda;
+            color: #FFD700;
+            border-bottom: 3px solid #FFD700;
             padding-bottom: 10px;
         }
 
@@ -91,37 +93,37 @@
             position: absolute;
             width: 120px;
             height: 100px;
-            border: 2px solid #64ffda;
-            border-radius: 8px;
+            border: 3px solid #FFD700;
+            border-radius: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(100, 255, 218, 0.1);
+            background: #000;
             transition: all 0.3s ease;
         }
 
         .room.current {
-            background: rgba(100, 255, 218, 0.3);
-            border-color: #00ffff;
-            border-width: 3px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #FFD700;
+            border-width: 4px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
             transform: scale(1.05);
         }
 
         .room.exit {
-            border-color: #64ff64;
-            background: rgba(100, 255, 100, 0.2);
+            border-color: #32CD32;
+            background: rgba(50, 205, 50, 0.15);
         }
 
         .room.locked {
-            border-color: #ff6464;
-            background: rgba(255, 100, 100, 0.2);
+            border-color: #DC143C;
+            background: rgba(220, 20, 60, 0.15);
         }
 
         .room.unknown {
             border-color: #666;
-            background: rgba(100, 100, 100, 0.1);
+            background: #0a0a0a;
             border-style: dashed;
         }
 
@@ -139,7 +141,7 @@
 
         .connection {
             position: absolute;
-            background: rgba(100, 255, 218, 0.3);
+            background: #FFD700;
         }
 
         .connection.horizontal {
@@ -151,26 +153,28 @@
         }
 
         .current-room-details {
-            background: rgba(0, 255, 255, 0.1);
+            background: #000;
+            border: 2px solid #FFD700;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 0;
             margin-bottom: 15px;
         }
 
         .current-room-details h3 {
-            color: #00ffff;
+            color: #FFD700;
             margin-bottom: 10px;
         }
 
         .detail-section {
             margin: 10px 0;
             padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 5px;
+            background: #000;
+            border: 2px solid #FFD700;
+            border-radius: 0;
         }
 
         .detail-label {
-            color: #64ffda;
+            color: #FFD700;
             font-weight: bold;
             margin-bottom: 5px;
         }
@@ -183,22 +187,25 @@
         }
 
         .item {
-            background: rgba(100, 255, 218, 0.2);
+            background: #000;
+            border: 2px solid #FFD700;
             padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: 0;
             font-size: 0.9em;
         }
 
         .challenge-item {
-            background: rgba(255, 215, 0, 0.2);
+            background: #000;
+            border: 2px solid #FFD700;
             padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: 0;
             font-size: 0.9em;
             margin: 5px 0;
         }
 
         .challenge-item.completed {
-            background: rgba(100, 255, 100, 0.2);
+            border-color: #32CD32;
+            color: #32CD32;
         }
 
         .stats-grid {
@@ -209,15 +216,16 @@
         }
 
         .stat-box {
-            background: rgba(0, 0, 0, 0.3);
+            background: #000;
+            border: 3px solid #FFD700;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 0;
             text-align: center;
         }
 
         .stat-value {
             font-size: 2em;
-            color: #64ffda;
+            color: #FFD700;
             margin: 10px 0;
         }
 
@@ -231,19 +239,20 @@
             top: 20px;
             right: 20px;
             padding: 10px 20px;
-            border-radius: 5px;
+            border-radius: 0;
             font-weight: bold;
             z-index: 1000;
+            background: #000;
         }
 
         .connection-status.connected {
-            background: rgba(100, 255, 100, 0.3);
-            border: 2px solid #64ff64;
+            border: 3px solid #32CD32;
+            color: #32CD32;
         }
 
         .connection-status.disconnected {
-            background: rgba(255, 100, 100, 0.3);
-            border: 2px solid #ff6464;
+            border: 3px solid #DC143C;
+            color: #DC143C;
         }
 
         .loading {
