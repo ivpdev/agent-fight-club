@@ -143,24 +143,24 @@ export class MapRenderer {
     _minY: number
   ): void {
     // North
-    if (room.exits.north) {
+    if (room.exits.includes('north')) {
       this.setGrid(grid, x + 5, y - 1, chalk.gray('│'));
     }
 
     // South
-    if (room.exits.south) {
+    if (room.exits.includes('south')) {
       this.setGrid(grid, x + 5, y + 4, chalk.gray('│'));
     }
 
     // East
-    if (room.exits.east) {
+    if (room.exits.includes('east')) {
       for (let i = 1; i <= 2; i++) {
         this.setGrid(grid, x + 11 + i, y + 2, chalk.gray('─'));
       }
     }
 
     // West
-    if (room.exits.west) {
+    if (room.exits.includes('west')) {
       for (let i = 1; i <= 2; i++) {
         this.setGrid(grid, x - i, y + 2, chalk.gray('─'));
       }

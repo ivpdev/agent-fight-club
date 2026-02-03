@@ -82,6 +82,42 @@ export class GameEngine {
   }
 
   /**
+   * Calculate destination room based on current position and direction
+   */
+  private getDestinationRoom(scenarioId: string, currentRoom: Room, direction: Direction): Room | undefined {
+    const scenario = this.scenarios.get(scenarioId);
+    if (!scenario) return undefined;
+
+    // Check if direction is in available exits
+    if (!currentRoom.exits.includes(direction)) {
+      return undefined;
+    }
+
+    // Calculate target position based on direction
+    const { x, y } = currentRoom.position;
+    let targetX = x;
+    let targetY = y;
+
+    switch (direction) {
+      case 'north':
+        targetY = y - 1;
+        break;
+      case 'south':
+        targetY = y + 1;
+        break;
+      case 'east':
+        targetX = x + 1;
+        break;
+      case 'west':
+        targetX = x - 1;
+        break;
+    }
+
+    // Find room at target position
+    return scenario.rooms.find((r) => r.position.x === targetX && r.position.y === targetY);
+  }
+
+  /**
    * Check if game is still active
    */
   private validateGameActive(gameState: GameState): void {
@@ -170,19 +206,14 @@ export class GameEngine {
       throw new Error(`Current room ${gameState.currentRoom} not found`);
     }
 
-    const nextRoomId = currentRoom.exits[direction];
-    if (!nextRoomId) {
+    const nextRoom = this.getDestinationRoom(gameState.scenarioId, currentRoom, direction);
+    if (!nextRoom) {
       this.incrementTurn(gameState);
       return {
         success: false,
         message: `No exit to the ${direction} from this room.`,
         turnCount: gameState.turnCount,
       };
-    }
-
-    const nextRoom = this.getRoom(gameState.scenarioId, nextRoomId);
-    if (!nextRoom) {
-      throw new Error(`Next room ${nextRoomId} not found`);
     }
 
     // Check if room is locked
@@ -205,9 +236,9 @@ export class GameEngine {
     }
 
     // Move to the next room
-    gameState.currentRoom = nextRoomId;
-    if (!gameState.roomsVisited.includes(nextRoomId)) {
-      gameState.roomsVisited.push(nextRoomId);
+    gameState.currentRoom = nextRoom.id;
+    if (!gameState.roomsVisited.includes(nextRoom.id)) {
+      gameState.roomsVisited.push(nextRoom.id);
     }
 
     this.incrementTurn(gameState);
@@ -241,7 +272,7 @@ export class GameEngine {
 
     // If no target, examine the room
     if (!target) {
-      const exits = Object.keys(currentRoom.exits).join(', ');
+      const exits = currentRoom.exits.join(', ');
       const objects = currentRoom.objects.map((o) => o.name).join(', ');
       const challenges = currentRoom.challenges
         .map((cId) => {
@@ -252,7 +283,7 @@ export class GameEngine {
         .join(', ');
 
       let description = currentRoom.description;
-      if (exits) description += `\n\nExits: ${exits}`;
+      if (exits.length > 0) description += `\n\nExits: ${exits}`;
       if (objects) description += `\n\nObjects: ${objects}`;
       if (challenges) description += `\n\nChallenges: ${challenges}`;
 

@@ -20,7 +20,7 @@ export interface Room {
   id: string;
   name: string;
   description: string;
-  exits: Partial<Record<Direction, string>>; // direction -> room_id
+  exits: Direction[]; // Available directions - destination calculated from position
   objects: GameObject[];
   challenges: string[]; // challenge IDs
   isExit: boolean;

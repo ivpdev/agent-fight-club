@@ -18,7 +18,7 @@ export const libraryScenario: Scenario = {
       description:
         'A dusty entrance hall with faded wallpaper. Cobwebs hang from the ceiling. You see paths leading north and east.',
       position: { x: 0, y: 2 },
-      exits: { north: 'reading_room', east: 'storage' },
+      exits: ['north', 'east'],
       objects: [
         {
           id: 'flashlight',
@@ -36,7 +36,7 @@ export const libraryScenario: Scenario = {
       description:
         'A cozy room filled with old books and comfortable chairs. A large desk sits in the corner with papers scattered on it.',
       position: { x: 0, y: 1 },
-      exits: { south: 'entrance', east: 'main_hall', north: 'archives' },
+      exits: ['north', 'south', 'east'],
       objects: [
         {
           id: 'book_cipher',
@@ -56,14 +56,43 @@ export const libraryScenario: Scenario = {
       isExit: false,
     },
     {
+      id: 'archives',
+      name: 'Archives',
+      description:
+        'The library archives. Rows of filing cabinets and shelves packed with documents. A riddle is written on the wall: "I speak without a mouth and hear without ears. I have no body, but come alive with wind. What am I?"',
+      position: { x: 0, y: 0 },
+      exits: ['south'],
+      objects: [],
+      challenges: ['riddle'],
+      isExit: false,
+    },
+    {
       id: 'main_hall',
       name: 'Main Hall',
       description:
         'The grand main hall of the library. Tall bookshelves line the walls. A mysterious message is carved into the wooden door to the east: "URYYB JBEYQ"',
       position: { x: 1, y: 1 },
-      exits: { west: 'reading_room', east: 'locked_room' },
+      exits: ['west', 'east'],
       objects: [],
       challenges: ['cipher_puzzle'],
+      isExit: false,
+    },
+    {
+      id: 'storage',
+      name: 'Storage Room',
+      description:
+        'A cramped storage room filled with boxes and old equipment. Dust fills the air.',
+      position: { x: 1, y: 2 },
+      exits: ['west'],
+      objects: [
+        {
+          id: 'ladder',
+          name: 'ladder',
+          description: 'A wooden ladder. It could help you reach high places.',
+          takeable: false,
+        },
+      ],
+      challenges: [],
       isExit: false,
     },
     {
@@ -72,7 +101,7 @@ export const libraryScenario: Scenario = {
       description:
         'A hidden study revealed! Ancient manuscripts and a golden key rest on a pedestal.',
       position: { x: 2, y: 1 },
-      exits: { west: 'main_hall', south: 'exit' },
+      exits: ['west', 'south'],
       objects: [
         {
           id: 'golden_key',
@@ -87,41 +116,12 @@ export const libraryScenario: Scenario = {
       unlockRequires: 'cipher_puzzle',
     },
     {
-      id: 'storage',
-      name: 'Storage Room',
-      description:
-        'A cramped storage room filled with boxes and old equipment. Dust fills the air.',
-      position: { x: 1, y: 2 },
-      exits: { west: 'entrance', north: 'archives' },
-      objects: [
-        {
-          id: 'ladder',
-          name: 'ladder',
-          description: 'A wooden ladder. It could help you reach high places.',
-          takeable: false,
-        },
-      ],
-      challenges: [],
-      isExit: false,
-    },
-    {
-      id: 'archives',
-      name: 'Archives',
-      description:
-        'The library archives. Rows of filing cabinets and shelves packed with documents. A riddle is written on the wall: "I speak without a mouth and hear without ears. I have no body, but come alive with wind. What am I?"',
-      position: { x: 1, y: 0 },
-      exits: { south: 'reading_room', west: 'storage' },
-      objects: [],
-      challenges: ['riddle'],
-      isExit: false,
-    },
-    {
       id: 'exit',
       name: 'Exit Door',
       description:
         'The exit! A heavy wooden door with a golden keyhole. Freedom awaits beyond.',
       position: { x: 2, y: 2 },
-      exits: { north: 'locked_room' },
+      exits: ['north'],
       objects: [],
       challenges: [],
       isExit: true,
