@@ -6,6 +6,19 @@
     <title>AI Agent Competition - Live View</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        :root {
+            --bg: #0b0b0b;
+            --ink: #f7f3e7;
+            --accent: #f7d000;
+            --accent-strong: #ffea3a;
+            --signal: #c61f26;
+            --muted: #8b8b8b;
+            --panel: #111111;
+            --panel-2: #151515;
+            --line: #2b2b2b;
+            --glow: rgba(255, 234, 58, 0.55);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,11 +26,32 @@
         }
 
         body {
-            font-family: 'Courier New', monospace;
-            background: #0a0a0a;
-            color: #fff;
+            font-family: "Courier New", monospace;
+            background: var(--bg);
+            color: var(--ink);
             padding: 20px;
             min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 1px 1px, rgba(255, 234, 58, 0.16) 1px, transparent 1px),
+                radial-gradient(circle at 2px 2px, rgba(198, 31, 38, 0.18) 1px, transparent 1px),
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 4px);
+            background-size: 8px 8px, 14px 14px, 100% 100%;
+        }
+
+        .accent {
+            color: var(--accent);
+        }
+
+        .accent-strong {
+            color: var(--accent-strong);
+        }
+
+        .signal {
+            color: var(--signal);
+        }
+
+        .muted {
+            color: var(--muted);
         }
 
         .container {
@@ -29,15 +63,26 @@
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
-            background: #1a1a1a;
-            border: 3px solid #FFD700;
+            background: var(--panel);
+            border: 4px solid var(--accent);
             border-radius: 0;
+            box-shadow: 6px 6px 0 #000;
+            position: relative;
+        }
+
+        header::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border: 2px solid var(--line);
+            pointer-events: none;
         }
 
         h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-shadow: 3px 3px 0 #000;
+            color: var(--accent-strong);
         }
 
         .status-bar {
@@ -48,11 +93,12 @@
         }
 
         .status-item {
-            padding: 5px 15px;
+            padding: 6px 14px;
             background: #000;
-            border: 2px solid #FFD700;
+            border: 2px solid var(--accent);
             border-radius: 0;
             margin: 5px;
+            box-shadow: 3px 3px 0 #000;
         }
 
         .main-content {
@@ -63,17 +109,28 @@
         }
 
         .panel {
-            background: #1a1a1a;
-            border: 3px solid #FFD700;
+            background: var(--panel-2);
+            border: 4px solid var(--accent);
             border-radius: 0;
             padding: 20px;
+            box-shadow: 6px 6px 0 #000;
+            position: relative;
+        }
+
+        .panel::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border: 2px solid var(--line);
+            pointer-events: none;
         }
 
         .panel h2 {
             margin-bottom: 15px;
-            color: #FFD700;
-            border-bottom: 3px solid #FFD700;
+            color: var(--accent-strong);
+            border-bottom: 3px solid var(--accent);
             padding-bottom: 10px;
+            text-shadow: 2px 2px 0 #000;
         }
 
         #map-container {
@@ -93,7 +150,7 @@
             position: absolute;
             width: 120px;
             height: 100px;
-            border: 3px solid #FFD700;
+            border: 3px solid var(--accent);
             border-radius: 0;
             display: flex;
             flex-direction: column;
@@ -101,30 +158,39 @@
             justify-content: center;
             background: #000;
             transition: all 0.3s ease;
+            box-shadow: 4px 4px 0 #000;
+            background-image:
+                radial-gradient(circle at 1px 1px, rgba(255, 234, 58, 0.12) 1px, transparent 1px);
+            background-size: 7px 7px;
         }
 
         .room.current {
-            background: rgba(255, 215, 0, 0.2);
-            border-color: #FFD700;
+            background: rgba(255, 234, 58, 0.2);
+            border-color: var(--accent-strong);
             border-width: 4px;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 30px var(--glow), 5px 5px 0 #000;
             transform: scale(1.05);
         }
 
         .room.exit {
-            border-color: #32CD32;
-            background: rgba(50, 205, 50, 0.15);
+            border-color: var(--ink);
+            background: rgba(247, 243, 231, 0.1);
         }
 
         .room.locked {
-            border-color: #DC143C;
-            background: rgba(220, 20, 60, 0.15);
+            border-color: var(--signal);
+            background: rgba(198, 31, 38, 0.2);
         }
 
         .room.unknown {
-            border-color: #666;
+            border-color: var(--muted);
             background: #0a0a0a;
             border-style: dashed;
+        }
+
+        .room.visited {
+            border-color: var(--muted);
+            background: #000;
         }
 
         .room-name {
@@ -132,6 +198,7 @@
             font-size: 0.9em;
             margin-bottom: 5px;
             text-align: center;
+            color: var(--ink);
         }
 
         .room-symbol {
@@ -141,7 +208,7 @@
 
         .connection {
             position: absolute;
-            background: #FFD700;
+            background: var(--accent);
         }
 
         .connection.horizontal {
@@ -154,27 +221,30 @@
 
         .current-room-details {
             background: #000;
-            border: 2px solid #FFD700;
+            border: 3px solid var(--accent);
             padding: 15px;
             border-radius: 0;
             margin-bottom: 15px;
+            box-shadow: 4px 4px 0 #000;
         }
 
         .current-room-details h3 {
-            color: #FFD700;
+            color: var(--accent-strong);
             margin-bottom: 10px;
+            text-shadow: 2px 2px 0 #000;
         }
 
         .detail-section {
             margin: 10px 0;
             padding: 10px;
             background: #000;
-            border: 2px solid #FFD700;
+            border: 2px solid var(--accent);
             border-radius: 0;
+            box-shadow: 3px 3px 0 #000;
         }
 
         .detail-label {
-            color: #FFD700;
+            color: var(--accent-strong);
             font-weight: bold;
             margin-bottom: 5px;
         }
@@ -188,24 +258,26 @@
 
         .item {
             background: #000;
-            border: 2px solid #FFD700;
+            border: 2px solid var(--accent);
             padding: 5px 10px;
             border-radius: 0;
             font-size: 0.9em;
+            box-shadow: 2px 2px 0 #000;
         }
 
         .challenge-item {
             background: #000;
-            border: 2px solid #FFD700;
+            border: 2px solid var(--accent);
             padding: 5px 10px;
             border-radius: 0;
             font-size: 0.9em;
             margin: 5px 0;
+            box-shadow: 2px 2px 0 #000;
         }
 
         .challenge-item.completed {
-            border-color: #32CD32;
-            color: #32CD32;
+            border-color: var(--ink);
+            color: var(--ink);
         }
 
         .stats-grid {
@@ -217,21 +289,23 @@
 
         .stat-box {
             background: #000;
-            border: 3px solid #FFD700;
+            border: 3px solid var(--accent);
             padding: 15px;
             border-radius: 0;
             text-align: center;
+            box-shadow: 3px 3px 0 #000;
         }
 
         .stat-value {
             font-size: 2em;
-            color: #FFD700;
+            color: var(--accent-strong);
             margin: 10px 0;
+            text-shadow: 2px 2px 0 #000;
         }
 
         .stat-label {
             font-size: 0.9em;
-            color: #aaa;
+            color: var(--muted);
         }
 
         .connection-status {
@@ -243,16 +317,17 @@
             font-weight: bold;
             z-index: 1000;
             background: #000;
+            box-shadow: 4px 4px 0 #000;
         }
 
         .connection-status.connected {
-            border: 3px solid #32CD32;
-            color: #32CD32;
+            border: 3px solid var(--accent);
+            color: var(--accent-strong);
         }
 
         .connection-status.disconnected {
-            border: 3px solid #DC143C;
-            color: #DC143C;
+            border: 3px solid var(--signal);
+            color: var(--signal);
         }
 
         .loading {
@@ -479,6 +554,8 @@
                 roomDiv.classList.add('locked');
             } else if (!visited) {
                 roomDiv.classList.add('unknown');
+            } else {
+                roomDiv.classList.add('visited');
             }
 
             const x = (room.position.x - minX) * 140;
@@ -551,14 +628,14 @@
             const container = document.getElementById('currentRoomDetails');
             container.innerHTML = `
                 <h3>${currentRoom.name}</h3>
-                <p style="color: #ccc; margin: 10px 0;">${currentRoom.description}</p>
+                <p class="muted" style="margin: 10px 0;">${currentRoom.description}</p>
             `;
 
             // Exits
             if (Object.keys(currentRoom.exits).length > 0) {
                 const exitsDiv = document.createElement('div');
                 exitsDiv.style.margin = '10px 0';
-                exitsDiv.innerHTML = `<strong style="color: #ffd700;">Exits:</strong> ${Object.keys(currentRoom.exits).join(', ')}`;
+                exitsDiv.innerHTML = `<strong class="accent-strong">Exits:</strong> ${Object.keys(currentRoom.exits).join(', ')}`;
                 container.appendChild(exitsDiv);
             }
 
@@ -566,7 +643,7 @@
             if (currentRoom.objects.length > 0) {
                 const objDiv = document.createElement('div');
                 objDiv.style.margin = '10px 0';
-                objDiv.innerHTML = `<strong style="color: #64ff64;">Objects:</strong>`;
+                objDiv.innerHTML = `<strong class="accent-strong">Objects:</strong>`;
                 const itemList = document.createElement('div');
                 itemList.className = 'item-list';
                 currentRoom.objects.forEach(obj => {
@@ -583,7 +660,7 @@
             if (currentRoom.challenges.length > 0) {
                 const challDiv = document.createElement('div');
                 challDiv.style.margin = '10px 0';
-                challDiv.innerHTML = `<strong style="color: #ffd700;">Challenges:</strong>`;
+                challDiv.innerHTML = `<strong class="accent-strong">Challenges:</strong>`;
                 currentRoom.challenges.forEach(cId => {
                     const challenge = scenario.challenges.find(c => c.id === cId);
                     if (challenge) {
@@ -605,7 +682,7 @@
         function renderInventory(inventory) {
             const container = document.getElementById('inventory');
             if (inventory.length === 0) {
-                container.innerHTML = '<span style="color: #888;">Empty</span>';
+                container.innerHTML = '<span class="muted">Empty</span>';
             } else {
                 container.innerHTML = '';
                 inventory.forEach(itemId => {
@@ -620,7 +697,7 @@
         function renderCompletedChallenges(completed, allChallenges) {
             const container = document.getElementById('completedChallenges');
             if (completed.length === 0) {
-                container.innerHTML = '<span style="color: #888;">None yet</span>';
+                container.innerHTML = '<span class="muted">None yet</span>';
             } else {
                 container.innerHTML = '';
                 completed.forEach(cId => {

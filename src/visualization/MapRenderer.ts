@@ -2,6 +2,14 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import { GameState, Room, Scenario } from '../types';
 
+const theme = {
+  accent: '#f7d000',
+  accentStrong: '#ffea3a',
+  signal: '#c61f26',
+  muted: '#8b8b8b',
+  ink: '#f7f3e7',
+};
+
 export class MapRenderer {
   /**
    * Render the complete game state visualization
@@ -28,7 +36,7 @@ export class MapRenderer {
       padding: 0,
       margin: 1,
       borderStyle: 'double',
-      borderColor: 'cyan',
+      borderColor: 'yellow',
     });
   }
 
@@ -39,9 +47,9 @@ export class MapRenderer {
     const statusColor = gameState.status === 'completed' ? 'green' :
                        gameState.status === 'failed' ? 'red' : 'yellow';
 
-    const title = chalk.bold.cyan(`🎮 ${scenario.name}`);
-    const turn = chalk.gray(`Turn ${gameState.turnCount}`);
-    const agent = chalk.gray(`Agent: ${gameState.agentId}`);
+    const title = chalk.hex(theme.accentStrong).bold(`🎮 ${scenario.name}`);
+    const turn = chalk.hex(theme.muted)(`Turn ${gameState.turnCount}`);
+    const agent = chalk.hex(theme.muted)(`Agent: ${gameState.agentId}`);
     const status = chalk[statusColor](gameState.status.replace('_', ' ').toUpperCase());
 
     return `${title} - ${turn}\n${agent}        Status: ${status}`;
@@ -112,8 +120,13 @@ export class MapRenderer {
 
     // Draw room box (only if visited or current)
     if (visited || isCurrent) {
-      const color = isCurrent ? 'cyan' : isExit ? 'green' : room.locked ? 'red' : 'white';
-      const boxColor = chalk[color];
+      const boxColor = isCurrent
+        ? chalk.hex(theme.accentStrong)
+        : isExit
+          ? chalk.hex(theme.ink)
+          : room.locked
+            ? chalk.hex(theme.signal)
+            : chalk.hex(theme.muted);
 
       this.setGrid(grid, x, y, boxColor('┌─────────┐'));
       this.setGrid(grid, x, y + 1, boxColor(`│ ${this.pad(roomName, 7)} │`));
@@ -124,9 +137,10 @@ export class MapRenderer {
       this.drawConnections(grid, room, gameState, x, y, minX, minY);
     } else {
       // Unknown room - just show placeholder
-      this.setGrid(grid, x + 2, y + 1, chalk.gray('┌───┐'));
-      this.setGrid(grid, x + 2, y + 2, chalk.gray(`│ ${symbol} │`));
-      this.setGrid(grid, x + 2, y + 3, chalk.gray('└───┘'));
+      const muted = chalk.hex(theme.muted);
+      this.setGrid(grid, x + 2, y + 1, muted('┌───┐'));
+      this.setGrid(grid, x + 2, y + 2, muted(`│ ${symbol} │`));
+      this.setGrid(grid, x + 2, y + 3, muted('└───┘'));
     }
   }
 
@@ -144,25 +158,25 @@ export class MapRenderer {
   ): void {
     // North
     if (room.exits.includes('north')) {
-      this.setGrid(grid, x + 5, y - 1, chalk.gray('│'));
+      this.setGrid(grid, x + 5, y - 1, chalk.hex(theme.muted)('│'));
     }
 
     // South
     if (room.exits.includes('south')) {
-      this.setGrid(grid, x + 5, y + 4, chalk.gray('│'));
+      this.setGrid(grid, x + 5, y + 4, chalk.hex(theme.muted)('│'));
     }
 
     // East
     if (room.exits.includes('east')) {
       for (let i = 1; i <= 2; i++) {
-        this.setGrid(grid, x + 11 + i, y + 2, chalk.gray('─'));
+        this.setGrid(grid, x + 11 + i, y + 2, chalk.hex(theme.muted)('─'));
       }
     }
 
     // West
     if (room.exits.includes('west')) {
       for (let i = 1; i <= 2; i++) {
-        this.setGrid(grid, x - i, y + 2, chalk.gray('─'));
+        this.setGrid(grid, x - i, y + 2, chalk.hex(theme.muted)('─'));
       }
     }
   }
@@ -196,27 +210,29 @@ export class MapRenderer {
   private renderRoomDetails(room: Room, gameState: GameState): string {
     const lines: string[] = [];
 
-    lines.push(chalk.bold(`Current Room: ${room.name}`));
-    lines.push(chalk.gray(room.description));
+    lines.push(chalk.hex(theme.accentStrong).bold(`Current Room: ${room.name}`));
+    lines.push(chalk.hex(theme.muted)(room.description));
     lines.push('');
 
     // Exits
     const exits = Object.keys(room.exits);
     if (exits.length > 0) {
-      lines.push(`Exits: ${chalk.yellow(exits.join(', '))}`);
+      lines.push(`Exits: ${chalk.hex(theme.accent)(exits.join(', '))}`);
     }
 
     // Objects
     if (room.objects.length > 0) {
       const objectNames = room.objects.map((o) => o.name).join(', ');
-      lines.push(`Objects: ${chalk.green(objectNames)}`);
+      lines.push(`Objects: ${chalk.hex(theme.accentStrong)(objectNames)}`);
     }
 
     // Challenges
     if (room.challenges.length > 0) {
       const challengeStatus = room.challenges.map((cId) => {
         const completed = gameState.challengesCompleted.includes(cId);
-        return completed ? chalk.green(`✓ ${cId}`) : chalk.yellow(`⚡ ${cId}`);
+        return completed
+          ? chalk.hex(theme.ink)(`✓ ${cId}`)
+          : chalk.hex(theme.accent)(`⚡ ${cId}`);
       });
       lines.push(`Challenges: ${challengeStatus.join(', ')}`);
     }
@@ -224,9 +240,9 @@ export class MapRenderer {
     // Inventory
     lines.push('');
     if (gameState.inventory.length > 0) {
-      lines.push(`Inventory: ${chalk.cyan(gameState.inventory.join(', '))}`);
+      lines.push(`Inventory: ${chalk.hex(theme.accent)(gameState.inventory.join(', '))}`);
     } else {
-      lines.push(chalk.gray('Inventory: empty'));
+      lines.push(chalk.hex(theme.muted)('Inventory: empty'));
     }
 
     return lines.join('\n');
@@ -244,13 +260,13 @@ export class MapRenderer {
     const roomsVisited = gameState.roomsVisited.length;
 
     lines.push(
-      `Challenges: ${chalk.cyan(`${challengesCompleted}/${challengesTotal}`)}  ` +
-        `Rooms Explored: ${chalk.cyan(`${roomsVisited}/${roomsTotal}`)}`
+      `Challenges: ${chalk.hex(theme.accent)(`${challengesCompleted}/${challengesTotal}`)}  ` +
+        `Rooms Explored: ${chalk.hex(theme.accent)(`${roomsVisited}/${roomsTotal}`)}`
     );
 
     lines.push(
-      `Score: ${chalk.yellow(gameState.score.toString())}  ` +
-        `Hints Used: ${chalk.magenta(gameState.hintsUsed.toString())}`
+      `Score: ${chalk.hex(theme.accentStrong)(gameState.score.toString())}  ` +
+        `Hints Used: ${chalk.hex(theme.signal)(gameState.hintsUsed.toString())}`
     );
 
     return lines.join('\n');
@@ -270,13 +286,13 @@ export class MapRenderer {
   renderMessage(message: string, color: 'info' | 'success' | 'error' | 'warning' = 'info'): string {
     switch (color) {
       case 'success':
-        return chalk.green(message);
+        return chalk.hex(theme.accentStrong)(message);
       case 'error':
-        return chalk.red(message);
+        return chalk.hex(theme.signal)(message);
       case 'warning':
-        return chalk.yellow(message);
+        return chalk.hex(theme.accent)(message);
       default:
-        return chalk.blue(message);
+        return chalk.hex(theme.muted)(message);
     }
   }
 }
