@@ -9,6 +9,8 @@
     "start": "node dist/server/index.js",
     "play": "tsx src/cli/index.ts",
     "play:visual": "tsx src/cli/index.ts --visualize",
+    "agent:memoryless": "tsx src/agents/run-memoryless.ts",
+    "agent:simple": "tsx src/agents/run-simple-agent.ts",
     "test": "jest",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
@@ -26,7 +28,9 @@
     "boxen": "^5.1.2",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2",
+    "openai": "^6.17.0",
     "socket.io": "^4.8.3",
     "uuid": "^9.0.1",
     "zod": "^3.22.4"
