@@ -209,14 +209,35 @@
         .connection {
             position: absolute;
             background: var(--accent);
+            box-shadow: 0 0 8px rgba(255, 234, 58, 0.4);
         }
 
         .connection.horizontal {
-            height: 2px;
+            height: 5px;
         }
 
         .connection.vertical {
-            width: 2px;
+            width: 5px;
+        }
+
+        .connection.from-current {
+            background: var(--accent-strong);
+            box-shadow: 0 0 15px var(--glow);
+        }
+
+        .connection-pad {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #000;
+            box-shadow: 0 0 10px rgba(255, 234, 58, 0.6), inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .connection-pad.from-current {
+            background: var(--accent-strong);
+            box-shadow: 0 0 18px var(--glow), inset 0 0 5px rgba(0, 0, 0, 0.5);
         }
 
         .current-room-details {
@@ -345,6 +366,148 @@
             animation: pulse 2s infinite;
         }
 
+        .command-panel {
+            background: var(--panel-2);
+            border: 4px solid var(--accent);
+            border-radius: 0;
+            padding: 20px;
+            box-shadow: 6px 6px 0 #000;
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .command-panel::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border: 2px solid var(--line);
+            pointer-events: none;
+        }
+
+        .command-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .command-input {
+            flex: 1;
+            background: #000;
+            border: 3px solid var(--accent);
+            color: var(--ink);
+            padding: 12px 15px;
+            font-family: "Courier New", monospace;
+            font-size: 1em;
+            border-radius: 0;
+            box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .command-input:focus {
+            outline: none;
+            border-color: var(--accent-strong);
+            box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.5), 0 0 15px var(--glow);
+        }
+
+        .command-btn {
+            background: #000;
+            border: 3px solid var(--accent);
+            color: var(--accent-strong);
+            padding: 12px 24px;
+            font-family: "Courier New", monospace;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 0;
+            box-shadow: 3px 3px 0 #000;
+            transition: all 0.2s;
+        }
+
+        .command-btn:hover {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 15px var(--glow), 3px 3px 0 #000;
+        }
+
+        .command-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        .quick-action-btn {
+            background: #000;
+            border: 2px solid var(--muted);
+            color: var(--accent);
+            padding: 8px 16px;
+            font-family: "Courier New", monospace;
+            font-size: 0.9em;
+            cursor: pointer;
+            border-radius: 0;
+            box-shadow: 2px 2px 0 #000;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-strong);
+            box-shadow: 0 0 10px rgba(255, 234, 58, 0.3), 2px 2px 0 #000;
+        }
+
+        .command-log {
+            background: #000;
+            border: 3px solid var(--line);
+            border-radius: 0;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-left: 3px solid var(--accent);
+            background: rgba(255, 234, 58, 0.05);
+        }
+
+        .log-entry.error {
+            border-left-color: var(--signal);
+            background: rgba(198, 31, 38, 0.1);
+        }
+
+        .log-entry.success {
+            border-left-color: var(--ink);
+            background: rgba(247, 243, 231, 0.05);
+        }
+
+        .log-command {
+            color: var(--accent-strong);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .log-result {
+            color: var(--ink);
+        }
+
+        .log-timestamp {
+            color: var(--muted);
+            font-size: 0.8em;
+        }
+
         @media (max-width: 1024px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -417,6 +580,32 @@
                         <span style="color: #888;">None yet</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="command-panel">
+            <h2>💻 Command Interface</h2>
+
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="quickMove('north')">⬆ North</button>
+                <button class="quick-action-btn" onclick="quickMove('south')">⬇ South</button>
+                <button class="quick-action-btn" onclick="quickMove('east')">➡ East</button>
+                <button class="quick-action-btn" onclick="quickMove('west')">⬅ West</button>
+            </div>
+
+            <div class="command-input-group">
+                <input
+                    type="text"
+                    id="commandInput"
+                    class="command-input"
+                    placeholder="Enter command (e.g., 'examine desk', 'take flashlight', 'solve riddle echo')"
+                    onkeypress="handleKeyPress(event)"
+                />
+                <button class="command-btn" onclick="executeCommand()">EXECUTE</button>
+            </div>
+
+            <div class="command-log" id="commandLog">
+                <div class="muted">Command log will appear here...</div>
             </div>
         </div>
     </div>
@@ -527,7 +716,7 @@
             // Render connections first (so they appear behind rooms)
             allRooms.forEach(room => {
                 if (gameState.roomsVisited.includes(room.id)) {
-                    renderConnections(mapGrid, room, allRooms, minX, minY);
+                    renderConnections(mapGrid, room, allRooms, minX, minY, gameState);
                 }
             });
 
@@ -586,41 +775,87 @@
             container.appendChild(roomDiv);
         }
 
-        function renderConnections(container, room, allRooms, minX, minY) {
+        function renderConnections(container, room, allRooms, minX, minY, gameState) {
             const x = (room.position.x - minX) * 140;
             const y = (room.position.y - minY) * 120;
+            const isCurrent = gameState.currentRoom === room.id;
 
-            // Render exit connections
-            Object.entries(room.exits).forEach(([direction, targetRoomId]) => {
-                const targetRoom = allRooms.find(r => r.id === targetRoomId);
+            // Render exit connections based on Direction array
+            room.exits.forEach((direction) => {
+                // Calculate target position based on grid
+                let targetX = room.position.x;
+                let targetY = room.position.y;
+
+                switch (direction) {
+                    case 'north': targetY = room.position.y - 1; break;
+                    case 'south': targetY = room.position.y + 1; break;
+                    case 'east': targetX = room.position.x + 1; break;
+                    case 'west': targetX = room.position.x - 1; break;
+                }
+
+                // Check if target room exists
+                const targetRoom = allRooms.find(r => r.position.x === targetX && r.position.y === targetY);
                 if (!targetRoom) return;
 
                 const conn = document.createElement('div');
                 conn.className = 'connection';
+                if (isCurrent) conn.classList.add('from-current');
+
+                // Create connection pads
+                const pad1 = document.createElement('div');
+                pad1.className = 'connection-pad';
+                if (isCurrent) pad1.classList.add('from-current');
+
+                const pad2 = document.createElement('div');
+                pad2.className = 'connection-pad';
+                if (isCurrent) pad2.classList.add('from-current');
 
                 if (direction === 'north') {
                     conn.classList.add('vertical');
-                    conn.style.left = (x + 60) + 'px';
+                    conn.style.left = (x + 60 - 2.5) + 'px';  // Center the 5px line
                     conn.style.top = (y - 20) + 'px';
                     conn.style.height = '20px';
+
+                    // Pads at connection points
+                    pad1.style.left = (x + 60 - 6) + 'px';
+                    pad1.style.top = (y - 6) + 'px';
+                    pad2.style.left = (x + 60 - 6) + 'px';
+                    pad2.style.top = (y - 20 - 6) + 'px';
                 } else if (direction === 'south') {
                     conn.classList.add('vertical');
-                    conn.style.left = (x + 60) + 'px';
+                    conn.style.left = (x + 60 - 2.5) + 'px';
                     conn.style.top = (y + 100) + 'px';
                     conn.style.height = '20px';
+
+                    pad1.style.left = (x + 60 - 6) + 'px';
+                    pad1.style.top = (y + 100 - 6) + 'px';
+                    pad2.style.left = (x + 60 - 6) + 'px';
+                    pad2.style.top = (y + 120 - 6) + 'px';
                 } else if (direction === 'east') {
                     conn.classList.add('horizontal');
                     conn.style.left = (x + 120) + 'px';
-                    conn.style.top = (y + 50) + 'px';
+                    conn.style.top = (y + 50 - 2.5) + 'px';
                     conn.style.width = '20px';
+
+                    pad1.style.left = (x + 120 - 6) + 'px';
+                    pad1.style.top = (y + 50 - 6) + 'px';
+                    pad2.style.left = (x + 140 - 6) + 'px';
+                    pad2.style.top = (y + 50 - 6) + 'px';
                 } else if (direction === 'west') {
                     conn.classList.add('horizontal');
                     conn.style.left = (x - 20) + 'px';
-                    conn.style.top = (y + 50) + 'px';
+                    conn.style.top = (y + 50 - 2.5) + 'px';
                     conn.style.width = '20px';
+
+                    pad1.style.left = (x - 6) + 'px';
+                    pad1.style.top = (y + 50 - 6) + 'px';
+                    pad2.style.left = (x - 20 - 6) + 'px';
+                    pad2.style.top = (y + 50 - 6) + 'px';
                 }
 
                 container.appendChild(conn);
+                container.appendChild(pad1);
+                container.appendChild(pad2);
             });
         }
 
@@ -632,10 +867,10 @@
             `;
 
             // Exits
-            if (Object.keys(currentRoom.exits).length > 0) {
+            if (currentRoom.exits && currentRoom.exits.length > 0) {
                 const exitsDiv = document.createElement('div');
                 exitsDiv.style.margin = '10px 0';
-                exitsDiv.innerHTML = `<strong class="accent-strong">Exits:</strong> ${Object.keys(currentRoom.exits).join(', ')}`;
+                exitsDiv.innerHTML = `<strong class="accent-strong">Exits:</strong> ${currentRoom.exits.join(', ')}`;
                 container.appendChild(exitsDiv);
             }
 
@@ -722,6 +957,173 @@
             .catch(err => {
                 console.error('Failed to fetch initial state:', err);
             });
+
+        // Command interface functions
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                executeCommand();
+            }
+        }
+
+        function quickMove(direction) {
+            const input = document.getElementById('commandInput');
+            input.value = `move ${direction}`;
+            executeCommand();
+        }
+
+        function addLogEntry(command, result, isError = false) {
+            const log = document.getElementById('commandLog');
+
+            // Clear placeholder
+            if (log.querySelector('.muted')) {
+                log.innerHTML = '';
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            if (isError) {
+                entry.classList.add('error');
+            } else if (result.includes('✓') || result.toLowerCase().includes('success')) {
+                entry.classList.add('success');
+            }
+
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `
+                <div class="log-timestamp">${timestamp}</div>
+                <div class="log-command">&gt; ${command}</div>
+                <div class="log-result">${result}</div>
+            `;
+
+            log.insertBefore(entry, log.firstChild);
+
+            // Limit log entries to 20
+            while (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        async function executeCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+
+            if (!command) return;
+
+            const parts = command.split(' ');
+            const action = parts[0].toLowerCase();
+
+            try {
+                let result;
+
+                switch (action) {
+                    case 'move':
+                    case 'go':
+                        if (parts.length < 2) {
+                            addLogEntry(command, '❌ Usage: move <direction>', true);
+                            return;
+                        }
+                        result = await fetch(`/games/${gameId}/move`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ direction: parts[1] })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'examine':
+                    case 'look':
+                        if (parts.length < 2) {
+                            addLogEntry(command, '❌ Usage: examine <target>', true);
+                            return;
+                        }
+                        result = await fetch(`/games/${gameId}/examine`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ target: parts.slice(1).join(' ') })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'take':
+                    case 'get':
+                        if (parts.length < 2) {
+                            addLogEntry(command, '❌ Usage: take <object>', true);
+                            return;
+                        }
+                        result = await fetch(`/games/${gameId}/interact`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                objectId: parts[1],
+                                action: 'take'
+                            })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'use':
+                        if (parts.length < 2) {
+                            addLogEntry(command, '❌ Usage: use <object> [on <target>]', true);
+                            return;
+                        }
+                        const useWith = parts.includes('on') ? parts[parts.indexOf('on') + 1] : undefined;
+                        result = await fetch(`/games/${gameId}/interact`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                objectId: parts[1],
+                                action: 'use',
+                                useWith: useWith
+                            })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'solve':
+                        if (parts.length < 3) {
+                            addLogEntry(command, '❌ Usage: solve <challenge_id> <solution>', true);
+                            return;
+                        }
+                        result = await fetch(`/games/${gameId}/solve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                challengeId: parts[1],
+                                solution: parts.slice(2).join(' ')
+                            })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'hint':
+                        if (parts.length < 2) {
+                            addLogEntry(command, '❌ Usage: hint <challenge_id>', true);
+                            return;
+                        }
+                        result = await fetch(`/games/${gameId}/hint`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ challengeId: parts[1] })
+                        }).then(r => r.json());
+                        break;
+
+                    case 'inventory':
+                    case 'inv':
+                        result = await fetch(`/games/${gameId}/inventory`).then(r => r.json());
+                        addLogEntry(command, `Inventory: ${result.inventory.join(', ') || 'Empty'}`);
+                        input.value = '';
+                        return;
+
+                    default:
+                        addLogEntry(command, '❌ Unknown command. Available: move, examine, take, use, solve, hint, inventory', true);
+                        return;
+                }
+
+                if (result) {
+                    const icon = result.success ? '✓' : '✗';
+                    addLogEntry(command, `${icon} ${result.message}`, !result.success);
+                }
+
+                input.value = '';
+            } catch (error) {
+                console.error('Command execution error:', error);
+                addLogEntry(command, `❌ Error: ${error.message}`, true);
+            }
+        }
     </script>
 </body>
 </html>
