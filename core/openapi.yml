@@ -21,6 +21,8 @@ tags:
     description: Game management and state
   - name: actions
     description: Game actions (move, examine, interact, solve)
+  - name: cli
+    description: Text-based CLI interface via HTTP
 
 paths:
   /health:
@@ -292,6 +294,135 @@ paths:
                 $ref: '#/components/schemas/ActionResult'
         '400':
           description: Bad request - missing challengeId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cli/sessions:
+    post:
+      summary: Create a new CLI session
+      description: Creates a new text-based CLI session for interactive gameplay
+      tags:
+        - cli
+      responses:
+        '201':
+          description: CLI session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                    example: 123e4567-e89b-12d3-a456-426614174000
+                  output:
+                    type: string
+                    example: CLI session created. Type "help" for available commands.
+
+  /cli/sessions/{sessionId}/execute:
+    post:
+      summary: Execute a CLI command
+      description: |
+        Executes a text command in the CLI session and returns formatted output.
+
+        Available commands:
+        - help - Show available commands
+        - start <scenario> - Start a new game
+        - scenarios - List available scenarios
+        - move <dir>, n/s/e/w - Move in a direction
+        - look, l - Look around
+        - examine <target>, x - Examine an object
+        - take <object> - Pick up an object
+        - use <object> - Use an object
+        - inventory, i - Check inventory
+        - solve <challenge_id> <solution> - Submit solution
+        - hint <challenge_id> - Get a hint
+        - status - Show game status
+        - quit - End session
+      tags:
+        - cli
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: CLI session ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - command
+              properties:
+                command:
+                  type: string
+                  description: The CLI command to execute
+                  example: move north
+      responses:
+        '200':
+          description: Command executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  output:
+                    type: string
+                    description: Formatted text output from the command
+                    example: |
+                      ✓ You moved north
+
+                      Reading Room
+                      A cozy room filled with old books and comfortable chairs.
+
+                      Exits: north, south, east
+                      Objects: cipher book, desk
+        '400':
+          description: Bad request - missing command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cli/sessions/{sessionId}:
+    delete:
+      summary: Delete a CLI session
+      description: Ends and deletes a CLI session
+      tags:
+        - cli
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: CLI session ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  output:
+                    type: string
+                    example: Session deleted
+        '404':
+          description: Session not found
           content:
             application/json:
               schema:

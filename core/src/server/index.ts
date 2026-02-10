@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'js-yaml';
 import { GameEngine } from '../engine/GameEngine';
 import { MapRenderer } from '../visualization/MapRenderer';
+import { CLISessionManager } from './CLISessionManager';
 import { scenarios } from '../scenarios';
 import {
   CreateGameRequest,
@@ -34,6 +35,7 @@ const gameEngine = new GameEngine();
 scenarios.forEach((scenario) => gameEngine.loadScenario(scenario));
 
 const renderer = new MapRenderer();
+const cliSessionManager = new CLISessionManager(gameEngine);
 
 // Load OpenAPI specification
 const openapiPath = path.join(__dirname, '../../openapi.yml');
@@ -441,6 +443,64 @@ app.get('/games/:gameId/inventory', (req: Request, res: Response) => {
     res.json({
       inventory: gameState.inventory,
     });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/**
+ * Create CLI session
+ */
+app.post('/cli/sessions', (_req: Request, res: Response) => {
+  try {
+    const sessionId = cliSessionManager.createSession();
+    res.status(201).json({
+      sessionId,
+      output: 'CLI session created. Type "help" for available commands.',
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/**
+ * Execute CLI command
+ */
+app.post('/cli/sessions/:sessionId/execute', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const { command } = req.body;
+
+    if (!command) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'command is required',
+      });
+    }
+
+    const output = await cliSessionManager.executeCommand(sessionId, command);
+    res.json({ output });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/**
+ * Delete CLI session
+ */
+app.delete('/cli/sessions/:sessionId', (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const deleted = cliSessionManager.deleteSession(sessionId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        error: 'session_not_found',
+        message: 'Session not found or already expired',
+      });
+    }
+
+    res.json({ output: 'Session deleted' });
   } catch (error) {
     handleError(res, error);
   }
