@@ -9,12 +9,16 @@ TODO:
         - webcli
         - cli-api
     - agents
+- implement cli-api
+- implement web-cli
+- implement agent using cli-api
 - implement game results capturing (agents runs the game via API -> results are persisted)
+- think about session management (currently game sessions are help in memory)
 - implement multiplayer
 - workout good challenges
 - create train/test rooms
 - make production ready
-    - think about session management (currently game sessions are help in memory)
+
 
 COMPLETED:
 - ✅ implement web visualizer via pub/sub - COMPLETED
