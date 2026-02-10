@@ -36,13 +36,41 @@ Built with TypeScript, Node.js, and Express for type safety and rapid developmen
 
 ## 3. System Architecture
 
+### Project Structure (Monorepo)
+
+```
+/afc/
+├── agents/              # Separate agents package
+│   ├── package.json     # @afc/agents
+│   ├── tsconfig.json
+│   └── src/
+│       ├── memoryless.ts        # Stateless agent
+│       ├── simple-agent.ts      # Agent with memory
+│       ├── run-memoryless.ts    # Runner script
+│       └── run-simple-agent.ts  # Runner script
+│
+├── core/                # Core platform package
+│   ├── package.json     # @afc/core
+│   ├── tsconfig.json
+│   ├── openapi.yml      # OpenAPI 3.0 specification
+│   └── src/
+│       ├── cli/         # Interactive CLI client
+│       ├── engine/      # Game engine core
+│       ├── scenarios/   # Scenario definitions
+│       ├── server/      # REST + WebSocket server
+│       ├── types/       # TypeScript type definitions
+│       └── visualization/  # ASCII & web rendering
+│
+└── package.json         # Root workspace config
+```
+
 ### High-Level Architecture
 
 ```
 ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
 │   Agent Clients      │   │  Interactive CLI     │   │  Web Visualization   │
 │  (Any Language via   │   │  (Human Player)      │   │   (Browser)          │
-│   REST API)          │   │                      │   │                      │
+│   REST API)          │   │  + HTTP CLI Sessions │   │                      │
 └──────────┬───────────┘   └──────────┬───────────┘   └──────────┬───────────┘
            │                          │                          │
            │        HTTP/REST         │         WebSocket        │
@@ -54,6 +82,8 @@ Built with TypeScript, Node.js, and Express for type safety and rapid developmen
         │  - Request Validation                                  │
         │  - Response Formatting                                 │
         │  - Real-time State Broadcasting (Socket.IO)            │
+        │  - OpenAPI Documentation (Swagger UI)                  │
+        │  - CLI Session Management                              │
         └─────────────────┬─────────────────────────────────────┘
                           │
         ┌─────────────────▼─────────────────────────────────────┐
@@ -314,6 +344,30 @@ Game completes successfully when:
 
 ## 6. API Specification
 
+### 6.0 API Documentation
+
+The platform provides comprehensive OpenAPI 3.0 documentation:
+
+**Interactive Documentation (Swagger UI):**
+- URL: `http://localhost:3000/api-docs`
+- Features:
+  - Interactive API explorer
+  - Try-it-out functionality
+  - Request/response examples
+  - Schema validation
+  - Organized by tags (health, scenarios, games, actions, cli)
+
+**Raw OpenAPI Spec:**
+- YAML: `http://localhost:3000/api-docs/openapi.yml`
+- File: `core/openapi.yml`
+
+**Coverage:**
+- All REST endpoints documented
+- Request/response schemas with examples
+- Error responses
+- Reusable components
+- CLI session endpoints
+
 ### 6.1 Game Management
 
 #### Create New Game
@@ -449,7 +503,68 @@ The visualization page automatically:
 - Subscribes to game updates for the specified game ID
 - Renders the game state in real-time
 
-## 6.5 WebSocket API (NEW)
+### 6.5 CLI Session API (NEW)
+
+HTTP-based stateful CLI interface for programmatic text-based interaction.
+
+#### Create CLI Session
+```http
+POST /cli/sessions
+
+Response 201:
+{
+  "sessionId": "uuid",
+  "output": "CLI session created. Type \"help\" for available commands."
+}
+```
+
+#### Execute CLI Command
+```http
+POST /cli/sessions/{sessionId}/execute
+Content-Type: application/json
+
+{
+  "command": "move north"
+}
+
+Response 200:
+{
+  "output": "✓ You moved north\n\nReading Room\nA cozy room filled with old books..."
+}
+```
+
+**Supported Commands:**
+- `help` - Show available commands
+- `start <scenario>` - Start a new game
+- `scenarios` - List available scenarios
+- `move <dir>`, `n/s/e/w` - Move in direction
+- `look`, `l` - Look around
+- `examine <target>`, `x` - Examine object
+- `take <object>` - Pick up object
+- `use <object>` - Use object
+- `inventory`, `i` - Check inventory
+- `solve <challenge_id> <solution>` - Submit solution
+- `hint <challenge_id>` - Get hint
+- `status` - Show game status
+- `quit` - End session
+
+**Session Features:**
+- Session state persisted on server
+- Remembers active game across commands
+- Auto-cleanup after 30 minutes of inactivity
+- Simple text-only output format
+
+#### Delete CLI Session
+```http
+DELETE /cli/sessions/{sessionId}
+
+Response 200:
+{
+  "output": "Session deleted"
+}
+```
+
+## 6.6 WebSocket API
 
 The platform uses Socket.IO for real-time communication with web visualization clients.
 
@@ -753,6 +868,8 @@ Track and rank agents by:
 - **Development**: tsx for hot-reload during development
 - **Visualization**: chalk (colors), boxen (borders), custom ASCII renderer
 - **WebSocket**: Socket.IO v4.8+ for real-time web visualization updates
+- **API Documentation**: OpenAPI 3.0 with Swagger UI (swagger-ui-express, js-yaml)
+- **Project Structure**: npm workspaces (monorepo with @afc/core and @afc/agents packages)
 
 ### Agent SDK
 - **Primary SDK**: TypeScript/JavaScript client library
@@ -806,7 +923,7 @@ Track and rank agents by:
 - [ ] Game state persistence (in-memory only, no DB yet)
 - [ ] Action logging
 
-### Phase 3.5: Real-time Web Visualization ✅ COMPLETED (NEW)
+### Phase 3.5: Real-time Web Visualization ✅ COMPLETED
 - [x] WebSocket integration (Socket.IO)
 - [x] Real-time game state broadcasting
 - [x] Web-based visualization UI
@@ -815,7 +932,15 @@ Track and rank agents by:
 - [x] Connection status indicators
 - [x] Responsive design for desktop and mobile
 
-### Phase 4: Agent Experience
+### Phase 3.6: API Documentation & CLI Sessions ✅ COMPLETED (NEW)
+- [x] OpenAPI 3.0 specification (YAML)
+- [x] Swagger UI interactive documentation
+- [x] HTTP-based CLI session endpoints
+- [x] Stateful session management
+- [x] Text-based command execution via API
+- [x] Project refactored into monorepo structure (agents + core packages)
+
+### Phase 4: Agent Experience ⏳ IN PROGRESS
 - [ ] TypeScript/JavaScript SDK
 - [ ] Example agents (random, simple heuristic)
 - [ ] Error handling improvements
