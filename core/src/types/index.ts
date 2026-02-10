@@ -16,11 +16,11 @@ export interface GameObject {
 }
 
 // Room definition
-export interface Room {
+export interface RoomDefinition {
   id: string;
   name: string;
   description: string;
-  exits: Direction[]; // Available directions - destination calculated from position
+  exits: Direction[];
   objects: GameObject[];
   challenges: string[]; // challenge IDs
   isExit: boolean;
@@ -29,8 +29,11 @@ export interface Room {
   position: { x: number; y: number }; // for map visualization
 }
 
+// Aliases for backwards compatibility
+export type Room = RoomDefinition;
+
 // Challenge definition
-export interface Challenge {
+export interface ChallengeDefinition {
   id: string;
   type: ChallengeType;
   title: string;
@@ -42,6 +45,9 @@ export interface Challenge {
   unlocks?: string; // room or object ID
 }
 
+// Aliases for backwards compatibility
+export type Challenge = ChallengeDefinition;
+
 // Scenario (escape room map)
 export interface Scenario {
   id: string;
@@ -50,8 +56,8 @@ export interface Scenario {
   description: string;
   startingRoom: string;
   exitRoom: string;
-  rooms: Room[];
-  challenges: Challenge[];
+  rooms: RoomDefinition[];
+  challenges: ChallengeDefinition[];
   optimalTurns: number;
   timeLimitMs?: number;
 }
@@ -76,7 +82,7 @@ export interface GameState {
 // Action log entry
 export interface ActionLog {
   gameId: string;
-  turnNumber: number;
+  turnNumber: number; //TODO remove (number is based on position in array)
   timestamp: number;
   action: string;
   parameters: Record<string, unknown>;

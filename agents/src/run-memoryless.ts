@@ -1,7 +1,7 @@
 #!/usr/bin/env npx ts-node
 
 import { exec } from "child_process";
-import { CreateGameResponse } from "../types";
+import { CreateGameResponse } from "@afc/core/types";
 
 const API_BASE = "http://localhost:3000";
 

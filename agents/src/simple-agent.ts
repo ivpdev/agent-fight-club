@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import {
   GameStateResponse,
   ActionResult,
-} from "../types";
+} from "@afc/core/types";
 
 const API_BASE = "http://localhost:3000";
 const MAX_TURNS = 20;
@@ -15,7 +15,7 @@ const openrouter = new OpenAI({
 });
 
 // Model to use - easy to swap
-const MODEL = "anthropic/claude-sonnet-4";
+const MODEL = "anthropic/claude-3-5-haiku";
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
