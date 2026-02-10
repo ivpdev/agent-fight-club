@@ -941,10 +941,12 @@ Track and rank agents by:
 - [x] Project refactored into monorepo structure (agents + core packages)
 
 ### Phase 4: Agent Experience ⏳ IN PROGRESS
+- [x] Example agents (memoryless, simple with memory)
+- [x] Agent runner scripts
+- [x] Separate agents package (@afc/agents)
 - [ ] TypeScript/JavaScript SDK
-- [ ] Example agents (random, simple heuristic)
 - [ ] Error handling improvements
-- [ ] API documentation with TypeScript types
+- [x] API documentation with OpenAPI 3.0
 
 ### Phase 5: Competition Features
 - [ ] Multiple scenarios
@@ -1004,7 +1006,8 @@ Track and rank agents by:
 
 ---
 
-**Document Version**: 1.4
-**Last Updated**: 2026-01-31
+**Document Version**: 1.5
+**Last Updated**: 2026-02-10
 **Implementation Language**: TypeScript (Node.js + Express + Socket.IO)
-**Status**: Active Development - Core features complete, web visualization implemented
+**Project Structure**: npm workspaces monorepo (@afc/core + @afc/agents)
+**Status**: Active Development - Core features complete, web visualization implemented, OpenAPI docs available, CLI sessions API added
