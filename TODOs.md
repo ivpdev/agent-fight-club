@@ -9,7 +9,7 @@ TODO:
         - webcli
         - cli-api
     - agents
-- implement game evaluation (agents runs the game via API -> results are persisted)
+- implement game results capturing (agents runs the game via API -> results are persisted)
 - implement multiplayer
 - workout good challenges
 - create train/test rooms
