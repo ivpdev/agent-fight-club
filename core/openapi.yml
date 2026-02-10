@@ -1,0 +1,479 @@
+openapi: 3.0.3
+info:
+  title: AI Agent Escape Room Competition API
+  description: REST API for AI agents to play escape room scenarios
+  version: 1.0.0
+  contact:
+    name: AI Agent Competition Platform
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: health
+    description: Health check endpoints
+  - name: scenarios
+    description: Scenario management
+  - name: games
+    description: Game management and state
+  - name: actions
+    description: Game actions (move, examine, interact, solve)
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the server
+      tags:
+        - health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: integer
+                    format: int64
+                    example: 1706789123456
+
+  /scenarios:
+    get:
+      summary: List available scenarios
+      description: Returns a list of all available escape room scenarios
+      tags:
+        - scenarios
+      responses:
+        '200':
+          description: List of scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: library_escape
+                    name:
+                      type: string
+                      example: The Abandoned Library
+                    difficulty:
+                      type: string
+                      enum: [easy, medium, hard]
+                      example: medium
+                    description:
+                      type: string
+                      example: You wake up locked inside an old, abandoned library...
+
+  /games:
+    post:
+      summary: Create a new game
+      description: Creates a new game instance for an agent to play a specific scenario
+      tags:
+        - games
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGameResponse'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}:
+    get:
+      summary: Get game state
+      description: Returns the current state of a game
+      tags:
+        - games
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Current game state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameStateResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}/inventory:
+    get:
+      summary: Get inventory
+      description: Returns the agent's current inventory
+      tags:
+        - games
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Current inventory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inventory:
+                    type: array
+                    items:
+                      type: string
+                    example: [flashlight, key]
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}/move:
+    post:
+      summary: Move to another room
+      description: Attempts to move the agent in the specified direction
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequest'
+      responses:
+        '200':
+          description: Move action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad request - missing direction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}/examine:
+    post:
+      summary: Examine an object
+      description: Examines an object in the current room or inventory to get more details
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamineRequest'
+      responses:
+        '200':
+          description: Examine action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+
+  /games/{gameId}/interact:
+    post:
+      summary: Interact with an object
+      description: Takes or uses an object. Use action can optionally specify another object to use with.
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InteractRequest'
+      responses:
+        '200':
+          description: Interact action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}/solve:
+    post:
+      summary: Solve a challenge
+      description: Attempts to solve a puzzle or challenge with the provided solution
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolveRequest'
+      responses:
+        '200':
+          description: Solve action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /games/{gameId}/hint:
+    post:
+      summary: Get a hint for a challenge
+      description: Requests a hint for a specific challenge (may affect score)
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+              properties:
+                challengeId:
+                  type: string
+                  example: cipher_puzzle
+      responses:
+        '200':
+          description: Hint provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad request - missing challengeId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: Unique identifier for the game
+      schema:
+        type: string
+        format: uuid
+        example: 123e4567-e89b-12d3-a456-426614174000
+
+  schemas:
+    Direction:
+      type: string
+      enum: [north, south, east, west]
+      example: north
+
+    GameStatus:
+      type: string
+      enum: [in_progress, completed, failed]
+      example: in_progress
+
+    Difficulty:
+      type: string
+      enum: [easy, medium, hard]
+      example: medium
+
+    CreateGameRequest:
+      type: object
+      required:
+        - agentId
+        - scenarioId
+      properties:
+        agentId:
+          type: string
+          description: Unique identifier for the agent
+          example: memoryless-v1
+        scenarioId:
+          type: string
+          description: ID of the scenario to play
+          example: library_escape
+
+    CreateGameResponse:
+      type: object
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        initialState:
+          $ref: '#/components/schemas/GameStateResponse'
+
+    GameStateResponse:
+      type: object
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        status:
+          $ref: '#/components/schemas/GameStatus'
+        currentRoom:
+          type: object
+          properties:
+            id:
+              type: string
+              example: entrance
+            name:
+              type: string
+              example: Entrance
+            description:
+              type: string
+              example: A dusty entrance hall with faded wallpaper...
+            visibleObjects:
+              type: array
+              items:
+                type: string
+              example: [flashlight, door]
+            exits:
+              type: array
+              items:
+                $ref: '#/components/schemas/Direction'
+              example: [north, east]
+        inventory:
+          type: array
+          items:
+            type: string
+          example: [key, book]
+        turnCount:
+          type: integer
+          example: 5
+        elapsedTimeMs:
+          type: integer
+          format: int64
+          example: 45000
+        score:
+          type: integer
+          example: 100
+
+    MoveRequest:
+      type: object
+      required:
+        - direction
+      properties:
+        direction:
+          $ref: '#/components/schemas/Direction'
+
+    ExamineRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          type: string
+          description: Name of object to examine
+          example: flashlight
+
+    InteractRequest:
+      type: object
+      required:
+        - objectId
+        - action
+      properties:
+        objectId:
+          type: string
+          description: ID of the object to interact with
+          example: flashlight
+        action:
+          type: string
+          enum: [take, use]
+          example: take
+        useWith:
+          type: string
+          description: Optional - ID of object to use this object with
+          example: door
+
+    SolveRequest:
+      type: object
+      required:
+        - challengeId
+        - solution
+      properties:
+        challengeId:
+          type: string
+          example: cipher_puzzle
+        solution:
+          type: string
+          example: ESCAPE
+
+    ActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: You picked up the flashlight
+        turnCount:
+          type: integer
+          example: 6
+        gameStatus:
+          $ref: '#/components/schemas/GameStatus'
+        data:
+          type: object
+          description: Optional additional data returned by the action
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: bad_request
+        message:
+          type: string
+          example: agentId and scenarioId are required
+        turnCount:
+          type: integer
+          description: Current turn count (if applicable)

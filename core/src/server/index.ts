@@ -2,6 +2,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'js-yaml';
 import { GameEngine } from '../engine/GameEngine';
 import { MapRenderer } from '../visualization/MapRenderer';
 import { scenarios } from '../scenarios';
@@ -31,6 +34,10 @@ const gameEngine = new GameEngine();
 scenarios.forEach((scenario) => gameEngine.loadScenario(scenario));
 
 const renderer = new MapRenderer();
+
+// Load OpenAPI specification
+const openapiPath = path.join(__dirname, '../../openapi.yml');
+const openapiDocument = YAML.load(fs.readFileSync(openapiPath, 'utf8')) as swaggerUi.JsonObject;
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -109,6 +116,22 @@ const handleError = (res: Response, error: unknown, statusCode: number = 500) =>
  */
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+/**
+ * Serve interactive API documentation with Swagger UI
+ */
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(openapiDocument, {
+  customSiteTitle: 'AI Agent Competition API',
+  customCss: '.swagger-ui .topbar { display: none }',
+}));
+
+/**
+ * Serve raw OpenAPI YAML specification
+ */
+app.get('/api-docs/openapi.yml', (_req: Request, res: Response) => {
+  res.sendFile(openapiPath);
 });
 
 /**

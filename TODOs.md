@@ -1,14 +1,4 @@
 TODO:
-- rework modules structure
-    - game server
-        - engine
-        - scenarios
-        - game visualization
-    - clients
-        - cli
-        - webcli
-        - cli-api
-    - agents
 - implement cli-api
 - implement web-cli
 - implement agent using cli-api
@@ -21,6 +11,7 @@ TODO:
 
 
 COMPLETED:
+- ✅ rework modules structure
 - ✅ implement web visualizer via pub/sub - COMPLETED
     - ✅ Real-time WebSocket updates using Socket.IO
     - ✅ Progress bar (challenges completed, rooms explored)
