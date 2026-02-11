@@ -5,10 +5,12 @@
   "private": true,
   "workspaces": [
     "core",
-    "agents"
+    "agents",
+    "webcli"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=core",
+    "dev:webcli": "npm run dev --workspace=webcli",
     "build": "npm run build --workspaces",
     "start": "npm run start --workspace=core",
     "play": "npm run play --workspace=core",

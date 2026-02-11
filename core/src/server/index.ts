@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import swaggerUi from 'swagger-ui-express';
@@ -89,6 +90,7 @@ const emitGameStateUpdate = (gameId: string) => {
 };
 
 // Middleware
+app.use(cors()); // Enable CORS for all routes
 app.use(express.json());
 
 // Serve static files for Socket.IO client

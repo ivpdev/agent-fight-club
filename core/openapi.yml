@@ -299,6 +299,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /cli:
+    get:
+      summary: Serve web CLI interface
+      description: Returns the retro terminal-style web interface for playing via browser
+      tags:
+        - cli
+      responses:
+        '200':
+          description: HTML page with web CLI interface
+          content:
+            text/html:
+              schema:
+                type: string
+
   /cli/sessions:
     post:
       summary: Create a new CLI session
