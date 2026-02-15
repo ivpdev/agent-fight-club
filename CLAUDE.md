@@ -48,3 +48,13 @@ User: "I think it make sense to refactor X to use Y instead"
 - Implementation complexity: ...
 Would you like me to proceed with this refactoring?"
 ```
+
+## TODOs in Specifications
+
+**IMPORTANT:** Specification files (SPEC.md, etc.) may contain TODO sections or comments.
+
+- TODOs in specs are for the **user**, not for Claude
+- TODOs indicate future extensions the user plans to write
+- **IGNORE all TODOs** when implementing specifications
+- Only implement what is explicitly specified, not what is marked as TODO
+- Do not mention or ask about TODOs unless specifically relevant to current work
