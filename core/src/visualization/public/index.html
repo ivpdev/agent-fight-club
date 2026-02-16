@@ -1031,106 +1031,12 @@
             const action = parts[0].toLowerCase();
 
             try {
-                let result;
-
-                switch (action) {
-                    case 'move':
-                    case 'go':
-                        if (parts.length < 2) {
-                            addLogEntry(command, '❌ Usage: move <direction>', true);
-                            return;
-                        }
-                        result = await fetch(`/games/${gameId}/move`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ direction: parts[1] })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'examine':
-                    case 'look':
-                        if (parts.length < 2) {
-                            addLogEntry(command, '❌ Usage: examine <target>', true);
-                            return;
-                        }
-                        result = await fetch(`/games/${gameId}/examine`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ target: parts.slice(1).join(' ') })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'take':
-                    case 'get':
-                        if (parts.length < 2) {
-                            addLogEntry(command, '❌ Usage: take <object>', true);
-                            return;
-                        }
-                        result = await fetch(`/games/${gameId}/interact`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                objectId: parts[1],
-                                action: 'take'
-                            })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'use':
-                        if (parts.length < 2) {
-                            addLogEntry(command, '❌ Usage: use <object> [on <target>]', true);
-                            return;
-                        }
-                        const useWith = parts.includes('on') ? parts[parts.indexOf('on') + 1] : undefined;
-                        result = await fetch(`/games/${gameId}/interact`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                objectId: parts[1],
-                                action: 'use',
-                                useWith: useWith
-                            })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'solve':
-                        if (parts.length < 3) {
-                            addLogEntry(command, '❌ Usage: solve <challenge_id> <solution>', true);
-                            return;
-                        }
-                        result = await fetch(`/games/${gameId}/solve`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                challengeId: parts[1],
-                                solution: parts.slice(2).join(' ')
-                            })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'hint':
-                        if (parts.length < 2) {
-                            addLogEntry(command, '❌ Usage: hint <challenge_id>', true);
-                            return;
-                        }
-                        result = await fetch(`/games/${gameId}/hint`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ challengeId: parts[1] })
-                        }).then(r => r.json());
-                        break;
-
-                    case 'inventory':
-                    case 'inv':
-                        result = await fetch(`/games/${gameId}/inventory`).then(r => r.json());
-                        addLogEntry(command, `Inventory: ${result.inventory.join(', ') || 'Empty'}`);
-                        input.value = '';
-                        return;
-
-                    default:
-                        addLogEntry(command, '❌ Unknown command. Available: move, examine, take, use, solve, hint, inventory', true);
-                        return;
-                }
+                const args = parts.slice(1);
+                const result = await fetch(`/games/${gameId}/command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: action, args })
+                }).then(r => r.json());
 
                 if (result) {
                     const icon = result.success ? '✓' : '✗';

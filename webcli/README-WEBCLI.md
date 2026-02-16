@@ -73,7 +73,7 @@ Environment variables (`.env`):
 The web CLI uses these backend endpoints:
 
 - `POST /cli/sessions` - Create new CLI session
-- `POST /cli/sessions/{sessionId}/execute` - Execute commands
+- `POST /cli/sessions/{sessionId}/command` - Execute commands
 
 ## Building
 

@@ -13,10 +13,6 @@ import { scenarios } from '../scenarios';
 import {
   CreateGameRequest,
   CommandRequest,
-  MoveRequest,
-  ExamineRequest,
-  InteractRequest,
-  SolveRequest,
   ErrorResponse,
 } from '../types';
 
@@ -332,157 +328,6 @@ app.post('/games/:gameId/command', async (req: Request, res: Response) => {
 });
 
 /**
- * Move action (legacy - delegates to generic command)
- */
-app.post('/games/:gameId/move', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const { direction }: MoveRequest = req.body;
-
-    if (!direction) {
-      return res.status(400).json({
-        error: 'bad_request',
-        message: 'direction is required',
-      });
-    }
-
-    const result = await gameEngine.executeCommand(gameId, 'move', [direction]);
-
-    renderVisualization(gameId);
-    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    emitGameStateUpdate(gameId);
-
-    res.json(result);
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
- * Examine action (legacy - delegates to generic command)
- */
-app.post('/games/:gameId/examine', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const { target }: ExamineRequest = req.body;
-
-    const args = target ? [target] : [];
-    const result = await gameEngine.executeCommand(gameId, 'examine', args);
-
-    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    emitGameStateUpdate(gameId);
-
-    res.json(result);
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
- * Interact action (legacy - delegates to generic command)
- */
-app.post('/games/:gameId/interact', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const { objectId, action, useWith }: InteractRequest = req.body;
-
-    if (!objectId || !action) {
-      return res.status(400).json({
-        error: 'bad_request',
-        message: 'objectId and action are required',
-      });
-    }
-
-    const result = await gameEngine.executeCommand(gameId, action, [objectId, ...(useWith ? [useWith] : [])]);
-
-    renderVisualization(gameId);
-    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    emitGameStateUpdate(gameId);
-
-    res.json(result);
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
- * Solve challenge (legacy - delegates to generic command)
- */
-app.post('/games/:gameId/solve', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const { challengeId, solution }: SolveRequest = req.body;
-
-    if (!challengeId || !solution) {
-      return res.status(400).json({
-        error: 'bad_request',
-        message: 'challengeId and solution are required',
-      });
-    }
-
-    const result = await gameEngine.executeCommand(gameId, 'solve', [challengeId, solution]);
-
-    renderVisualization(gameId);
-    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    emitGameStateUpdate(gameId);
-
-    res.json(result);
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
- * Get hint for challenge (legacy - delegates to generic command)
- */
-app.post('/games/:gameId/hint', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const { challengeId } = req.body;
-
-    if (!challengeId) {
-      return res.status(400).json({
-        error: 'bad_request',
-        message: 'challengeId is required',
-      });
-    }
-
-    const result = await gameEngine.executeCommand(gameId, 'hint', [challengeId]);
-
-    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    emitGameStateUpdate(gameId);
-
-    res.json(result);
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
- * Get inventory (legacy - delegates to generic command)
- */
-app.get('/games/:gameId/inventory', async (req: Request, res: Response) => {
-  try {
-    const { gameId } = req.params;
-    const gameState = gameEngine.getGame(gameId);
-
-    if (!gameState) {
-      return res.status(404).json({
-        error: 'game_not_found',
-        message: `Game ${gameId} does not exist`,
-      });
-    }
-
-    const scenarioState = gameEngine.getScenarioState(gameId) || {};
-    const inventory = (scenarioState.inventory as string[]) || [];
-
-    res.json({ inventory });
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-/**
  * Create CLI session
  */
 app.post('/cli/sessions', (_req: Request, res: Response) => {
@@ -500,7 +345,7 @@ app.post('/cli/sessions', (_req: Request, res: Response) => {
 /**
  * Execute CLI command
  */
-app.post('/cli/sessions/:sessionId/execute', async (req: Request, res: Response) => {
+app.post('/cli/sessions/:sessionId/command', async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
     const { command } = req.body;

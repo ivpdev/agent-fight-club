@@ -11,6 +11,10 @@ TODO:
 - remove connecting to server from webcli
 - create train/test rooms
 - make production ready
+- implement tab in webcli
+- remove agent_id from the game creation endpoint
+- add tests
+- work on proper session closing (exit command)
 
 
 

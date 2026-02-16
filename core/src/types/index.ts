@@ -147,25 +147,6 @@ export interface GameStateResponse {
   scenarioState: Record<string, unknown>;
 }
 
-export interface MoveRequest {
-  direction: Direction;
-}
-
-export interface ExamineRequest {
-  target: string;
-}
-
-export interface InteractRequest {
-  objectId: string;
-  action: 'take' | 'use';
-  useWith?: string;
-}
-
-export interface SolveRequest {
-  challengeId: string;
-  solution: string;
-}
-
 export interface ErrorResponse {
   error: string;
   message: string;

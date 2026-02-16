@@ -18,9 +18,7 @@ tags:
   - name: scenarios
     description: Scenario management
   - name: games
-    description: Game management and state
-  - name: actions
-    description: Game actions (generic command + legacy endpoints)
+    description: Game management, state, and commands
   - name: cli
     description: Text-based CLI interface via HTTP
 
@@ -141,7 +139,7 @@ paths:
         Escape room commands: move, look, examine, take, use, inventory, solve, hint, n/s/e/w
         Bell timer commands: r (ring bell), s <seconds> (set timer), w (wait)
       tags:
-        - actions
+        - games
       parameters:
         - $ref: '#/components/parameters/GameId'
       requestBody:
@@ -159,174 +157,6 @@ paths:
                 $ref: '#/components/schemas/ActionResult'
         '400':
           description: Bad request - missing command
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /games/{gameId}/inventory:
-    get:
-      summary: Get inventory (legacy)
-      description: Returns the agent's current inventory (escape room only)
-      tags:
-        - games
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      responses:
-        '200':
-          description: Current inventory
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  inventory:
-                    type: array
-                    items:
-                      type: string
-                    example: [flashlight, key]
-        '404':
-          description: Game not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /games/{gameId}/move:
-    post:
-      summary: Move to another room (legacy)
-      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
-      tags:
-        - actions
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MoveRequest'
-      responses:
-        '200':
-          description: Move action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResult'
-        '400':
-          description: Bad request - missing direction
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /games/{gameId}/examine:
-    post:
-      summary: Examine an object (legacy)
-      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
-      tags:
-        - actions
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExamineRequest'
-      responses:
-        '200':
-          description: Examine action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResult'
-
-  /games/{gameId}/interact:
-    post:
-      summary: Interact with an object (legacy)
-      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
-      tags:
-        - actions
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InteractRequest'
-      responses:
-        '200':
-          description: Interact action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResult'
-        '400':
-          description: Bad request - missing required fields
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /games/{gameId}/solve:
-    post:
-      summary: Solve a challenge (legacy)
-      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
-      tags:
-        - actions
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SolveRequest'
-      responses:
-        '200':
-          description: Solve action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResult'
-        '400':
-          description: Bad request - missing required fields
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /games/{gameId}/hint:
-    post:
-      summary: Get a hint for a challenge (legacy)
-      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
-      tags:
-        - actions
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - challengeId
-              properties:
-                challengeId:
-                  type: string
-                  example: cipher_puzzle
-      responses:
-        '200':
-          description: Hint provided
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResult'
-        '400':
-          description: Bad request - missing challengeId
           content:
             application/json:
               schema:
@@ -354,7 +184,7 @@ paths:
                     type: string
                     example: CLI session created. Type "help" for available commands.
 
-  /cli/sessions/{sessionId}/execute:
+  /cli/sessions/{sessionId}/command:
     post:
       summary: Execute a CLI command
       description: |
@@ -460,11 +290,6 @@ components:
         example: 123e4567-e89b-12d3-a456-426614174000
 
   schemas:
-    Direction:
-      type: string
-      enum: [north, south, east, west]
-      example: north
-
     GameStatus:
       type: string
       enum: [in_progress, completed, failed]
@@ -543,56 +368,6 @@ components:
             type: string
           description: Optional arguments for the command
           example: [north]
-
-    MoveRequest:
-      type: object
-      required:
-        - direction
-      properties:
-        direction:
-          $ref: '#/components/schemas/Direction'
-
-    ExamineRequest:
-      type: object
-      required:
-        - target
-      properties:
-        target:
-          type: string
-          description: Name of object to examine
-          example: flashlight
-
-    InteractRequest:
-      type: object
-      required:
-        - objectId
-        - action
-      properties:
-        objectId:
-          type: string
-          description: ID of the object to interact with
-          example: flashlight
-        action:
-          type: string
-          enum: [take, use]
-          example: take
-        useWith:
-          type: string
-          description: Optional - ID of object to use this object with
-          example: door
-
-    SolveRequest:
-      type: object
-      required:
-        - challengeId
-        - solution
-      properties:
-        challengeId:
-          type: string
-          example: cipher_puzzle
-        solution:
-          type: string
-          example: ESCAPE
 
     ActionResult:
       type: object

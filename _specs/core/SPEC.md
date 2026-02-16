@@ -520,7 +520,7 @@ Response 201:
 
 #### Execute CLI Command
 ```http
-POST /cli/sessions/{sessionId}/execute
+POST /cli/sessions/{sessionId}/command
 Content-Type: application/json
 
 {

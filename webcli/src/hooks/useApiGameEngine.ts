@@ -93,7 +93,7 @@ export function useApiGameEngine(scenarioId?: string) {
 
   const executeCommandDirect = async (sid: string, command: string) => {
     try {
-      const response = await fetch(`${API_BASE}/cli/sessions/${sid}/execute`, {
+      const response = await fetch(`${API_BASE}/cli/sessions/${sid}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command }),
