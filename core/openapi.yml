@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: AI Agent Escape Room Competition API
-  description: REST API for AI agents to play escape room scenarios
-  version: 1.0.0
+  title: AI Agent Competition API
+  description: REST API for AI agents to play various game scenarios
+  version: 2.0.0
   contact:
     name: AI Agent Competition Platform
   license:
@@ -20,7 +20,7 @@ tags:
   - name: games
     description: Game management and state
   - name: actions
-    description: Game actions (move, examine, interact, solve)
+    description: Game actions (generic command + legacy endpoints)
   - name: cli
     description: Text-based CLI interface via HTTP
 
@@ -50,7 +50,7 @@ paths:
   /scenarios:
     get:
       summary: List available scenarios
-      description: Returns a list of all available escape room scenarios
+      description: Returns a list of all available scenarios
       tags:
         - scenarios
       responses:
@@ -112,7 +112,7 @@ paths:
   /games/{gameId}:
     get:
       summary: Get game state
-      description: Returns the current state of a game
+      description: Returns the current state of a game including scenario-specific state
       tags:
         - games
       parameters:
@@ -131,10 +131,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /games/{gameId}/command:
+    post:
+      summary: Execute a game command
+      description: |
+        Generic command endpoint. Sends a command with optional arguments to the
+        active scenario handler. The available commands depend on the scenario type.
+
+        Escape room commands: move, look, examine, take, use, inventory, solve, hint, n/s/e/w
+        Bell timer commands: r (ring bell), s <seconds> (set timer), w (wait)
+      tags:
+        - actions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+      responses:
+        '200':
+          description: Command result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad request - missing command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /games/{gameId}/inventory:
     get:
-      summary: Get inventory
-      description: Returns the agent's current inventory
+      summary: Get inventory (legacy)
+      description: Returns the agent's current inventory (escape room only)
       tags:
         - games
       parameters:
@@ -161,8 +194,8 @@ paths:
 
   /games/{gameId}/move:
     post:
-      summary: Move to another room
-      description: Attempts to move the agent in the specified direction
+      summary: Move to another room (legacy)
+      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
       tags:
         - actions
       parameters:
@@ -189,8 +222,8 @@ paths:
 
   /games/{gameId}/examine:
     post:
-      summary: Examine an object
-      description: Examines an object in the current room or inventory to get more details
+      summary: Examine an object (legacy)
+      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
       tags:
         - actions
       parameters:
@@ -211,8 +244,8 @@ paths:
 
   /games/{gameId}/interact:
     post:
-      summary: Interact with an object
-      description: Takes or uses an object. Use action can optionally specify another object to use with.
+      summary: Interact with an object (legacy)
+      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
       tags:
         - actions
       parameters:
@@ -239,8 +272,8 @@ paths:
 
   /games/{gameId}/solve:
     post:
-      summary: Solve a challenge
-      description: Attempts to solve a puzzle or challenge with the provided solution
+      summary: Solve a challenge (legacy)
+      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
       tags:
         - actions
       parameters:
@@ -267,8 +300,8 @@ paths:
 
   /games/{gameId}/hint:
     post:
-      summary: Get a hint for a challenge
-      description: Requests a hint for a specific challenge (may affect score)
+      summary: Get a hint for a challenge (legacy)
+      description: Legacy endpoint - delegates to generic command. Use POST /games/{gameId}/command instead.
       tags:
         - actions
       parameters:
@@ -299,20 +332,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /cli:
-    get:
-      summary: Serve web CLI interface
-      description: Returns the retro terminal-style web interface for playing via browser
-      tags:
-        - cli
-      responses:
-        '200':
-          description: HTML page with web CLI interface
-          content:
-            text/html:
-              schema:
-                type: string
-
   /cli/sessions:
     post:
       summary: Create a new CLI session
@@ -341,20 +360,14 @@ paths:
       description: |
         Executes a text command in the CLI session and returns formatted output.
 
-        Available commands:
+        Meta-commands (always available):
         - help - Show available commands
         - start <scenario> - Start a new game
         - scenarios - List available scenarios
-        - move <dir>, n/s/e/w - Move in a direction
-        - look, l - Look around
-        - examine <target>, x - Examine an object
-        - take <object> - Pick up an object
-        - use <object> - Use an object
-        - inventory, i - Check inventory
-        - solve <challenge_id> <solution> - Submit solution
-        - hint <challenge_id> - Get a hint
         - status - Show game status
         - quit - End session
+
+        Game commands are scenario-specific and forwarded to the handler.
       tags:
         - cli
       parameters:
@@ -389,14 +402,6 @@ paths:
                   output:
                     type: string
                     description: Formatted text output from the command
-                    example: |
-                      ✓ You moved north
-
-                      Reading Room
-                      A cozy room filled with old books and comfortable chairs.
-
-                      Exits: north, south, east
-                      Objects: cipher book, desk
         '400':
           description: Bad request - missing command
           content:
@@ -492,6 +497,10 @@ components:
           type: string
           format: uuid
           example: 123e4567-e89b-12d3-a456-426614174000
+        initialMessage:
+          type: string
+          description: Welcome text from the scenario handler
+          example: "Entrance\nA dusty entrance hall..."
         initialState:
           $ref: '#/components/schemas/GameStateResponse'
 
@@ -504,33 +513,6 @@ components:
           example: 123e4567-e89b-12d3-a456-426614174000
         status:
           $ref: '#/components/schemas/GameStatus'
-        currentRoom:
-          type: object
-          properties:
-            id:
-              type: string
-              example: entrance
-            name:
-              type: string
-              example: Entrance
-            description:
-              type: string
-              example: A dusty entrance hall with faded wallpaper...
-            visibleObjects:
-              type: array
-              items:
-                type: string
-              example: [flashlight, door]
-            exits:
-              type: array
-              items:
-                $ref: '#/components/schemas/Direction'
-              example: [north, east]
-        inventory:
-          type: array
-          items:
-            type: string
-          example: [key, book]
         turnCount:
           type: integer
           example: 5
@@ -541,6 +523,26 @@ components:
         score:
           type: integer
           example: 100
+        scenarioState:
+          type: object
+          description: Scenario-specific state (varies by scenario type)
+          additionalProperties: true
+
+    CommandRequest:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: The command to execute (scenario-specific)
+          example: move
+        args:
+          type: array
+          items:
+            type: string
+          description: Optional arguments for the command
+          example: [north]
 
     MoveRequest:
       type: object

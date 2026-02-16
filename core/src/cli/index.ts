@@ -55,11 +55,11 @@ class CLIClient {
   }
 
   private printWelcome() {
-    console.log(chalk.bold.cyan('\n╔════════════════════════════════════════════╗'));
-    console.log(chalk.bold.cyan('║  AI Agent Competition Platform - CLI      ║'));
-    console.log(chalk.bold.cyan('╚════════════════════════════════════════════╝\n'));
+    console.log(chalk.bold.cyan('\n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557'));
+    console.log(chalk.bold.cyan('\u2551  AI Agent Competition Platform - CLI      \u2551'));
+    console.log(chalk.bold.cyan('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D\n'));
     if (this.options.visualize) {
-      console.log(chalk.yellow('🌐 Visualization mode enabled'));
+      console.log(chalk.yellow('\uD83C\uDF10 Visualization mode enabled'));
       console.log(chalk.gray('Browser will open automatically when you start a game\n'));
     }
     console.log(chalk.gray('Type "help" for available commands\n'));
@@ -81,7 +81,7 @@ class CLIClient {
       if (error) {
         console.log(chalk.yellow(`\nCouldn't open browser automatically. Visit: ${url}`));
       } else {
-        console.log(chalk.green(`\n🌐 Browser opened: ${url}\n`));
+        console.log(chalk.green(`\n\uD83C\uDF10 Browser opened: ${url}\n`));
       }
     });
   }
@@ -92,83 +92,42 @@ class CLIClient {
     const args = parts.slice(1);
 
     try {
+      // Meta-commands handled locally
       switch (command) {
         case 'help':
         case 'h':
         case '?':
-          this.printHelp();
-          break;
+          await this.printHelp();
+          return;
 
         case 'start':
           await this.startGame(args[0]);
-          break;
+          return;
 
         case 'scenarios':
         case 'list':
           await this.listScenarios();
-          break;
-
-        case 'move':
-        case 'go':
-        case 'n':
-        case 'north':
-        case 's':
-        case 'south':
-        case 'e':
-        case 'east':
-        case 'w':
-        case 'west':
-          await this.move(command === 'move' || command === 'go' ? args[0] : command);
-          break;
-
-        case 'look':
-        case 'l':
-          await this.examine(args.join(' '));
-          break;
-
-        case 'examine':
-        case 'x':
-          await this.examine(args.join(' '));
-          break;
-
-        case 'take':
-        case 'get':
-        case 'pickup':
-          await this.take(args.join(' '));
-          break;
-
-        case 'use':
-          await this.use(args.join(' '));
-          break;
-
-        case 'inventory':
-        case 'i':
-        case 'inv':
-          await this.inventory();
-          break;
-
-        case 'solve':
-          await this.solve(args[0], args.slice(1).join(' '));
-          break;
-
-        case 'hint':
-          await this.hint(args[0]);
-          break;
+          return;
 
         case 'status':
           await this.status();
-          break;
+          return;
 
         case 'quit':
         case 'exit':
         case 'q':
           this.rl.close();
-          break;
-
-        default:
-          console.log(chalk.red(`Unknown command: ${command}`));
-          console.log(chalk.gray('Type "help" for available commands'));
+          return;
       }
+
+      // All other commands go to the server's generic command endpoint
+      if (!this.session) {
+        console.log(chalk.red(`Unknown command: ${command}`));
+        console.log(chalk.gray('Type "help" for available commands'));
+        return;
+      }
+
+      await this.sendCommand(command, args);
     } catch (error) {
       if (error instanceof Error) {
         console.log(chalk.red(`Error: ${error.message}`));
@@ -176,41 +135,69 @@ class CLIClient {
     }
   }
 
-  private printHelp() {
+  private async sendCommand(command: string, args: string[]) {
+    if (!this.session) return;
+
+    try {
+      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command, args }),
+      });
+
+      const result = await response.json() as any;
+
+      if (result.success) {
+        console.log(chalk.green(`\n\u2713 ${result.message}\n`));
+      } else {
+        console.log(chalk.red(`\n\u2717 ${result.message}\n`));
+      }
+
+      if (result.gameStatus === 'completed') {
+        console.log(chalk.bold.green('\uD83C\uDF89 Congratulations! You won!'));
+        await this.status();
+      } else if (result.gameStatus === 'failed') {
+        console.log(chalk.bold.red('Game over! Time ran out.'));
+        await this.status();
+      }
+    } catch (error) {
+      console.log(chalk.red('Failed to execute command'));
+    }
+  }
+
+  private async printHelp() {
     console.log(chalk.bold('\nAvailable Commands:\n'));
 
     if (this.options.visualize) {
-      console.log(chalk.yellow('  🌐 Visualization mode is enabled'));
+      console.log(chalk.yellow('  \uD83C\uDF10 Visualization mode is enabled'));
       console.log(chalk.gray('     Browser will open when you start a game\n'));
     }
 
-    const commands = [
+    const metaCommands = [
       ['start <scenario>', 'Start a new game with the specified scenario'],
       ['scenarios, list', 'List available scenarios'],
-      ['', ''],
-      ['move <dir>, go <dir>', 'Move in a direction (north/south/east/west)'],
-      ['n, s, e, w', 'Shorthand for move north/south/east/west'],
-      ['look, l', 'Look around the current room'],
-      ['examine <target>, x', 'Examine object, challenge, or inventory item'],
-      ['take <object>, get', 'Pick up an object'],
-      ['use <object>', 'Use an object'],
-      ['inventory, i', 'Check your inventory'],
-      ['', ''],
-      ['solve <challenge_id> <answer>', 'Submit solution (use examine to see ID)'],
-      ['hint <challenge_id>', 'Get a hint for a challenge (penalty)'],
-      ['', ''],
       ['status', 'Show current game status'],
       ['help, h, ?', 'Show this help message'],
       ['quit, exit, q', 'Exit the game'],
     ];
 
-    commands.forEach(([cmd, desc]) => {
-      if (!cmd && !desc) {
-        console.log('');
-      } else {
-        console.log(`  ${chalk.cyan(cmd.padEnd(25))} ${chalk.gray(desc)}`);
-      }
+    metaCommands.forEach(([cmd, desc]) => {
+      console.log(`  ${chalk.cyan(cmd.padEnd(25))} ${chalk.gray(desc)}`);
     });
+
+    // Fetch scenario-specific help if a game is active
+    if (this.session) {
+      try {
+        const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}`);
+        const state = await response.json() as any;
+        if (state.scenarioState) {
+          console.log(chalk.bold('\nGame Commands:'));
+          console.log(chalk.gray('  (Commands depend on the active scenario. Try "help" in-game.)'));
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     console.log('');
   }
@@ -263,7 +250,7 @@ class CLIClient {
         scenarioId,
       };
 
-      console.log(chalk.green(`\n✓ Game started! Game ID: ${data.gameId}\n`));
+      console.log(chalk.green(`\n\u2713 Game started! Game ID: ${data.gameId}\n`));
 
       // Open visualization if enabled
       if (this.options.visualize) {
@@ -271,246 +258,14 @@ class CLIClient {
         this.openBrowser(visualizeUrl);
       }
 
-      // Show initial state
-      const room = data.initialState.currentRoom;
-      console.log(chalk.bold(room.name));
-      console.log(chalk.gray(room.description));
-
-      if (room.exits.length > 0) {
-        console.log(`\nExits: ${chalk.yellow(room.exits.join(', '))}`);
-      }
-
-      if (room.visibleObjects.length > 0) {
-        console.log(`Objects: ${chalk.green(room.visibleObjects.join(', '))}`);
+      // Show initial message from handler
+      if (data.initialMessage) {
+        console.log(data.initialMessage);
       }
 
       console.log('');
     } catch (error) {
       console.log(chalk.red('Failed to connect to server. Is it running?'));
-    }
-  }
-
-  private async move(direction: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first with "start <scenario>"'));
-      return;
-    }
-
-    // Map shorthand to full direction
-    const directionMap: Record<string, string> = {
-      n: 'north',
-      s: 'south',
-      e: 'east',
-      w: 'west',
-    };
-
-    const fullDirection = directionMap[direction] || direction;
-
-    if (!['north', 'south', 'east', 'west'].includes(fullDirection)) {
-      console.log(chalk.red('Invalid direction. Use: north, south, east, or west'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/move`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ direction: fullDirection }),
-      });
-
-      const result = await response.json() as any;
-
-      if (result.success) {
-        console.log(chalk.green(`\n✓ ${result.message}`));
-
-        // Get updated game state
-        await this.lookAround();
-
-        if (result.gameStatus === 'completed') {
-          console.log(chalk.bold.green('\n🎉 Congratulations! You escaped!'));
-          await this.status();
-        }
-      } else {
-        console.log(chalk.red(`\n✗ ${result.message}`));
-      }
-    } catch (error) {
-      console.log(chalk.red('Failed to execute move'));
-    }
-  }
-
-  private async examine(target: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/examine`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target }),
-      });
-
-      const result = await response.json() as any;
-      console.log(result.success ? chalk.gray(`\n${result.message}\n`) : chalk.red(`\n${result.message}\n`));
-    } catch (error) {
-      console.log(chalk.red('Failed to examine'));
-    }
-  }
-
-  private async lookAround() {
-    if (!this.session) return;
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}`);
-      const state = await response.json() as any;
-
-      const room = state.currentRoom;
-      console.log(chalk.bold(`\n${room.name}`));
-      console.log(chalk.gray(room.description));
-
-      if (room.exits.length > 0) {
-        console.log(`\nExits: ${chalk.yellow(room.exits.join(', '))}`);
-      }
-
-      if (room.visibleObjects.length > 0) {
-        console.log(`Objects: ${chalk.green(room.visibleObjects.join(', '))}`);
-      }
-
-      console.log('');
-    } catch (error) {
-      console.log(chalk.red('Failed to get game state'));
-    }
-  }
-
-  private async take(objectId: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    if (!objectId) {
-      console.log(chalk.red('What do you want to take?'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/interact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objectId,
-          action: 'take',
-        }),
-      });
-
-      const result = await response.json() as any;
-      console.log(result.success ? chalk.green(`\n✓ ${result.message}\n`) : chalk.red(`\n✗ ${result.message}\n`));
-    } catch (error) {
-      console.log(chalk.red('Failed to take object'));
-    }
-  }
-
-  private async use(objectId: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    if (!objectId) {
-      console.log(chalk.red('What do you want to use?'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/interact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objectId,
-          action: 'use',
-        }),
-      });
-
-      const result = await response.json() as any;
-      console.log(result.success ? chalk.green(`\n✓ ${result.message}\n`) : chalk.red(`\n✗ ${result.message}\n`));
-    } catch (error) {
-      console.log(chalk.red('Failed to use object'));
-    }
-  }
-
-  private async inventory() {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/inventory`);
-      const data = await response.json() as any;
-
-      console.log(chalk.bold('\nInventory:'));
-      if (data.inventory.length === 0) {
-        console.log(chalk.gray('  (empty)'));
-      } else {
-        data.inventory.forEach((item: string) => {
-          console.log(`  ${chalk.cyan('•')} ${item}`);
-        });
-        console.log(chalk.gray('\nTip: Use "examine <item>" to read items in your inventory'));
-      }
-      console.log('');
-    } catch (error) {
-      console.log(chalk.red('Failed to get inventory'));
-    }
-  }
-
-  private async solve(challengeId: string, solution: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    if (!challengeId || !solution) {
-      console.log(chalk.red('Usage: solve <challenge_id> <solution>'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/solve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId, solution }),
-      });
-
-      const result = await response.json() as any;
-      console.log(result.success ? chalk.green(`\n✓ ${result.message}\n`) : chalk.red(`\n✗ ${result.message}\n`));
-    } catch (error) {
-      console.log(chalk.red('Failed to submit solution'));
-    }
-  }
-
-  private async hint(challengeId: string) {
-    if (!this.session) {
-      console.log(chalk.red('No active game. Start a game first.'));
-      return;
-    }
-
-    if (!challengeId) {
-      console.log(chalk.red('Usage: hint <challenge_id>'));
-      return;
-    }
-
-    try {
-      const response = await fetch(`${SERVER_URL}/games/${this.session.gameId}/hint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId }),
-      });
-
-      const result = await response.json() as any;
-      console.log(chalk.yellow(`\n${result.message}\n`));
-    } catch (error) {
-      console.log(chalk.red('Failed to get hint'));
     }
   }
 

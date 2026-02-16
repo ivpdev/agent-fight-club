@@ -1,6 +1,7 @@
-import { Scenario } from '../types';
+import { EscapeRoomScenario } from '../types';
+import { EscapeRoomHandler } from '../engine/EscapeRoomHandler';
 
-export const libraryScenario: Scenario = {
+export const libraryScenario: EscapeRoomScenario = {
   id: 'library_escape',
   name: 'The Abandoned Library',
   difficulty: 'medium',
@@ -10,6 +11,10 @@ export const libraryScenario: Scenario = {
   exitRoom: 'exit',
   optimalTurns: 12,
   timeLimitMs: 300000, // 5 minutes
+
+  createHandler() {
+    return new EscapeRoomHandler(this);
+  },
 
   rooms: [
     {

@@ -48,35 +48,63 @@ export interface ChallengeDefinition {
 // Aliases for backwards compatibility
 export type Challenge = ChallengeDefinition;
 
-// Scenario (escape room map)
-export interface Scenario {
+// --- Scenario Handler interface ---
+
+export interface WinConditionResult {
+  won: boolean;
+  message?: string;
+}
+
+export interface ScenarioHandler {
+  getInitialMessage(): string;
+  getHelp(): string;
+  executeCommand(command: string, args: string[]): Promise<ActionResult>;
+  checkWinCondition(): WinConditionResult;
+  getState(): Record<string, unknown>;
+  getScoreAdjustment(): number;
+}
+
+// --- Scenario types ---
+
+export interface ScenarioBase {
   id: string;
   name: string;
   difficulty: Difficulty;
   description: string;
+  optimalTurns: number;
+  timeLimitMs?: number;
+  createHandler(): ScenarioHandler;
+}
+
+export interface EscapeRoomScenarioData {
   startingRoom: string;
   exitRoom: string;
   rooms: RoomDefinition[];
   challenges: ChallengeDefinition[];
-  optimalTurns: number;
-  timeLimitMs?: number;
 }
 
-// Game state
+export type EscapeRoomScenario = ScenarioBase & EscapeRoomScenarioData;
+
+// Generic alias used by the engine
+export type Scenario = ScenarioBase;
+
+// --- Game state (generic - scenario-specific state lives in handler) ---
+
 export interface GameState {
   gameId: string;
   scenarioId: string;
   agentId: string;
   status: GameStatus;
-  currentRoom: string;
-  inventory: string[]; // object IDs
-  challengesCompleted: string[];
   turnCount: number;
   startTime: number; // timestamp
   endTime: number | null;
   score: number;
-  hintsUsed: number;
-  roomsVisited: string[];
+}
+
+// Command request for generic command endpoint
+export interface CommandRequest {
+  command: string;
+  args?: string[];
 }
 
 // Action log entry
@@ -113,17 +141,10 @@ export interface CreateGameResponse {
 export interface GameStateResponse {
   gameId: string;
   status: GameStatus;
-  currentRoom: {
-    id: string;
-    name: string;
-    description: string;
-    visibleObjects: string[];
-    exits: Direction[];
-  };
-  inventory: string[];
   turnCount: number;
   elapsedTimeMs: number;
   score: number;
+  scenarioState: Record<string, unknown>;
 }
 
 export interface MoveRequest {

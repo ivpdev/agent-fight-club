@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "play": "sh -c 'VITE_SCENARIO=$1 vite' --",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

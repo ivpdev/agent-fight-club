@@ -49,6 +49,7 @@ Columns {model}_{prompt} will contain if the corrsponding combination of model a
 
 ## Plan
 1. create a list of 5 potential challenges
+
 2. update CLI endpoint
     - allow creating a cli session bound to a concrete game
         - using scenario name as paramter

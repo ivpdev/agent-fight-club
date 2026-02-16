@@ -12,7 +12,7 @@ const ASCII_TITLE = `
 ╚═╝  ╚═╝╚═╝     ╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝     ╚══════╝    ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝
 `;
 
-export function useApiGameEngine() {
+export function useApiGameEngine(scenarioId?: string) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [outputHistory, setOutputHistory] = useState<OutputLine[]>([]);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -45,8 +45,12 @@ export function useApiGameEngine() {
         const lines = parseOutput(data.output);
         setOutputHistory(lines);
 
-        // Auto-execute help command
-        await executeCommandDirect(data.sessionId, 'help');
+        // Auto-start scenario if provided, otherwise show help
+        if (scenarioId) {
+          await executeCommandDirect(data.sessionId, `start ${scenarioId}`);
+        } else {
+          await executeCommandDirect(data.sessionId, 'help');
+        }
       } catch (error) {
         setOutputHistory([
           { text: 'Failed to connect to server', type: 'error' },

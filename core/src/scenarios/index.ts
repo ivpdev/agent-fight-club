@@ -1,6 +1,7 @@
 import { Scenario } from '../types';
 import { libraryScenario } from './library';
+import { bellTimerScenario } from './bellTimer';
 
-export const scenarios: Scenario[] = [libraryScenario];
+export const scenarios: Scenario[] = [libraryScenario, bellTimerScenario];
 
-export { libraryScenario };
+export { libraryScenario, bellTimerScenario };

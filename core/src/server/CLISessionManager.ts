@@ -56,11 +56,12 @@ export class CLISessionManager {
     const args = parts.slice(1);
 
     try {
+      // Meta-commands handled by session manager
       switch (cmd) {
         case 'help':
         case 'h':
         case '?':
-          return this.getHelp();
+          return this.getHelp(session);
 
         case 'start':
           return await this.startGame(session, args[0]);
@@ -69,85 +70,61 @@ export class CLISessionManager {
         case 'list':
           return this.listScenarios();
 
-        case 'move':
-        case 'go':
-        case 'n':
-        case 'north':
-        case 's':
-        case 'south':
-        case 'e':
-        case 'east':
-        case 'w':
-        case 'west':
-          return await this.move(session, cmd === 'move' || cmd === 'go' ? args[0] : cmd);
-
-        case 'look':
-        case 'l':
-          return await this.look(session);
-
-        case 'examine':
-        case 'x':
-          return await this.examine(session, args.join(' '));
-
-        case 'take':
-        case 'get':
-        case 'pickup':
-          return await this.take(session, args.join(' '));
-
-        case 'use':
-          return await this.use(session, args.join(' '));
-
-        case 'inventory':
-        case 'i':
-        case 'inv':
-          return await this.inventory(session);
-
-        case 'solve':
-          return await this.solve(session, args[0], args.slice(1).join(' '));
-
-        case 'hint':
-          return await this.hint(session, args[0]);
-
         case 'status':
-          return await this.status(session);
+          return this.status(session);
 
         case 'quit':
         case 'exit':
         case 'q':
           this.deleteSession(sessionId);
           return 'Goodbye!';
-
-        default:
-          return `Unknown command: ${cmd}\nType "help" for available commands`;
       }
+
+      // All other commands go to the game engine
+      if (!session.gameId) {
+        return `Unknown command: ${cmd}\nType "help" for available commands`;
+      }
+
+      const result = await this.gameEngine.executeCommand(session.gameId, cmd, args);
+
+      let output = result.success ? `\u2713 ${result.message}` : `\u2717 ${result.message}`;
+
+      if (result.gameStatus === 'completed') {
+        output += '\n\n\uD83C\uDF89 Congratulations! You won!';
+        output += '\n' + this.status(session);
+      } else if (result.gameStatus === 'failed') {
+        output += '\n\nGame over! Time ran out.';
+        output += '\n' + this.status(session);
+      }
+
+      return output;
     } catch (error) {
       return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }
 
-  private getHelp(): string {
+  private getHelp(session: CLISession): string {
     const lines = [
       'Available Commands:',
       '',
       '  start <scenario>          Start a new game with the specified scenario',
       '  scenarios, list           List available scenarios',
-      '',
-      '  move <dir>, go <dir>      Move in a direction (north/south/east/west)',
-      '  n, s, e, w                Shorthand for move north/south/east/west',
-      '  look, l                   Look around the current room',
-      '  examine <target>, x       Examine object, challenge, or inventory item',
-      '  take <object>, get        Pick up an object',
-      '  use <object>              Use an object',
-      '  inventory, i              Check your inventory',
-      '',
-      '  solve <challenge_id> <answer>  Submit solution (use examine to see ID)',
-      '  hint <challenge_id>       Get a hint for a challenge (penalty)',
-      '',
       '  status                    Show current game status',
       '  help, h, ?                Show this help message',
       '  quit, exit, q             End the session',
-      '',
     ];
+
+    // Add scenario-specific help if a game is active
+    if (session.gameId) {
+      const scenarioHelp = this.gameEngine.getHelp(session.gameId);
+      if (scenarioHelp) {
+        lines.push('');
+        lines.push('Game Commands:');
+        lines.push(scenarioHelp);
+      }
+    }
+
+    lines.push('');
     return lines.join('\n');
   }
 
@@ -163,196 +140,26 @@ export class CLISessionManager {
     return lines.join('\n');
   }
 
-  private async startGame(session: CLISession, scenarioId: string): Promise<string> {
+  private startGame(session: CLISession, scenarioId: string): string {
     if (!scenarioId) {
       return 'Error: Please specify a scenario ID\nUsage: start <scenario_id>';
     }
 
-    const gameState = this.gameEngine.createGame('cli-player', scenarioId);
+    const { gameState, initialMessage } = this.gameEngine.createGame('cli-player', scenarioId);
     session.gameId = gameState.gameId;
     session.scenarioId = scenarioId;
 
-    const currentRoom = this.gameEngine.getCurrentRoom(gameState.gameId);
-    if (!currentRoom) {
-      return 'Error: Failed to initialize game';
-    }
-
     const lines = [
-      `✓ Game started! Game ID: ${gameState.gameId}`,
+      `\u2713 Game started! Game ID: ${gameState.gameId}`,
       '',
-      currentRoom.name,
-      currentRoom.description,
+      initialMessage,
+      '',
     ];
 
-    if (currentRoom.exits.length > 0) {
-      lines.push('');
-      lines.push(`Exits: ${currentRoom.exits.join(', ')}`);
-    }
-
-    if (currentRoom.objects.length > 0) {
-      lines.push(`Objects: ${currentRoom.objects.map(o => o.name).join(', ')}`);
-    }
-
-    lines.push('');
     return lines.join('\n');
   }
 
-  private async move(session: CLISession, direction: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game. Start a game first with "start <scenario>"';
-    }
-
-    const directionMap: Record<string, string> = {
-      n: 'north',
-      s: 'south',
-      e: 'east',
-      w: 'west',
-    };
-
-    const fullDirection = directionMap[direction] || direction;
-
-    if (!['north', 'south', 'east', 'west'].includes(fullDirection)) {
-      return 'Error: Invalid direction. Use: north, south, east, or west';
-    }
-
-    const result = this.gameEngine.move(session.gameId, fullDirection as any);
-
-    if (!result.success) {
-      return `✗ ${result.message}`;
-    }
-
-    const lines = [`✓ ${result.message}`, ''];
-    const roomDesc = await this.look(session);
-    lines.push(roomDesc);
-
-    if (result.gameStatus === 'completed') {
-      lines.push('');
-      lines.push('🎉 Congratulations! You escaped!');
-      const statusDesc = await this.status(session);
-      lines.push('');
-      lines.push(statusDesc);
-    }
-
-    return lines.join('\n');
-  }
-
-  private async look(session: CLISession): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    const currentRoom = this.gameEngine.getCurrentRoom(session.gameId);
-    if (!currentRoom) {
-      return 'Error: Current room not found';
-    }
-
-    const lines = [
-      currentRoom.name,
-      currentRoom.description,
-    ];
-
-    if (currentRoom.exits.length > 0) {
-      lines.push('');
-      lines.push(`Exits: ${currentRoom.exits.join(', ')}`);
-    }
-
-    if (currentRoom.objects.length > 0) {
-      lines.push(`Objects: ${currentRoom.objects.map(o => o.name).join(', ')}`);
-    }
-
-    return lines.join('\n');
-  }
-
-  private async examine(session: CLISession, target: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    if (!target) {
-      return await this.look(session);
-    }
-
-    const result = this.gameEngine.examine(session.gameId, target);
-    return result.message;
-  }
-
-  private async take(session: CLISession, objectId: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    if (!objectId) {
-      return 'Error: What do you want to take?';
-    }
-
-    const result = this.gameEngine.interact(session.gameId, objectId, 'take');
-    return result.success ? `✓ ${result.message}` : `✗ ${result.message}`;
-  }
-
-  private async use(session: CLISession, objectId: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    if (!objectId) {
-      return 'Error: What do you want to use?';
-    }
-
-    const result = this.gameEngine.interact(session.gameId, objectId, 'use');
-    return result.success ? `✓ ${result.message}` : `✗ ${result.message}`;
-  }
-
-  private async inventory(session: CLISession): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    const gameState = this.gameEngine.getGame(session.gameId);
-    if (!gameState) {
-      return 'Error: Game not found';
-    }
-
-    const lines = ['Inventory:'];
-    if (gameState.inventory.length === 0) {
-      lines.push('  (empty)');
-    } else {
-      gameState.inventory.forEach((item) => {
-        lines.push(`  • ${item}`);
-      });
-      lines.push('');
-      lines.push('Tip: Use "examine <item>" to read items in your inventory');
-    }
-
-    return lines.join('\n');
-  }
-
-  private async solve(session: CLISession, challengeId: string, solution: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    if (!challengeId || !solution) {
-      return 'Error: Usage: solve <challenge_id> <solution>';
-    }
-
-    const result = this.gameEngine.solve(session.gameId, challengeId, solution);
-    return result.success ? `✓ ${result.message}` : `✗ ${result.message}`;
-  }
-
-  private async hint(session: CLISession, challengeId: string): Promise<string> {
-    if (!session.gameId) {
-      return 'Error: No active game.';
-    }
-
-    if (!challengeId) {
-      return 'Error: Usage: hint <challenge_id>';
-    }
-
-    const result = this.gameEngine.getHint(session.gameId, challengeId);
-    return result.message;
-  }
-
-  private async status(session: CLISession): Promise<string> {
+  private status(session: CLISession): string {
     if (!session.gameId) {
       return 'Error: No active game.';
     }

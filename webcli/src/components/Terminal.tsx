@@ -3,7 +3,10 @@ import { useApiGameEngine } from '../hooks/useApiGameEngine';
 import { OutputLine } from '../game/types';
 
 const Terminal: React.FC = () => {
-  const { outputHistory, processCommand, navigateHistory, gameState } = useApiGameEngine();
+  const scenarioId = new URLSearchParams(window.location.search).get('scenario')
+    || import.meta.env.VITE_SCENARIO
+    || undefined;
+  const { outputHistory, processCommand, navigateHistory, gameState } = useApiGameEngine(scenarioId);
   const [inputValue, setInputValue] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

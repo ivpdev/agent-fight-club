@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { GameState, Room, Scenario } from '../types';
+import { GameState, Room } from '../types';
 
 const theme = {
   accent: '#f7d000',
@@ -12,22 +12,34 @@ const theme = {
 
 export class MapRenderer {
   /**
-   * Render the complete game state visualization
+   * Render the complete game state visualization.
+   * Accepts gameState and a scenarioState record (from handler.getState()).
+   * Only works for escape-room scenarios that provide allRooms/currentRoom.
    */
-  render(gameState: GameState, scenario: Scenario, currentRoom: Room, allRooms: Room[]): string {
+  render(gameState: GameState, scenarioState: Record<string, unknown>): string {
+    const allRooms = scenarioState.allRooms as Room[];
+    const currentRoom = scenarioState.currentRoomData as Room;
+    const inventory = (scenarioState.inventory as string[]) || [];
+    const challengesCompleted = (scenarioState.challengesCompleted as string[]) || [];
+    const roomsVisited = (scenarioState.roomsVisited as string[]) || [];
+    const hintsUsed = (scenarioState.hintsUsed as number) || 0;
+    const currentRoomId = scenarioState.currentRoom as string;
+
+    if (!allRooms || !currentRoom) return '';
+
     const sections: string[] = [];
 
     // Header
-    sections.push(this.renderHeader(gameState, scenario));
+    sections.push(this.renderHeader(gameState));
 
     // Map
-    sections.push(this.renderMap(gameState, allRooms));
+    sections.push(this.renderMap(currentRoomId, roomsVisited, allRooms));
 
     // Current room details
-    sections.push(this.renderRoomDetails(currentRoom, gameState));
+    sections.push(this.renderRoomDetails(currentRoom, inventory, challengesCompleted));
 
     // Status bar
-    sections.push(this.renderStatusBar(gameState, scenario));
+    sections.push(this.renderStatusBar(gameState, allRooms, challengesCompleted, roomsVisited, hintsUsed));
 
     // Combine all sections
     const content = sections.join('\n' + '═'.repeat(63) + '\n');
@@ -43,11 +55,11 @@ export class MapRenderer {
   /**
    * Render header with game title and status
    */
-  private renderHeader(gameState: GameState, scenario: Scenario): string {
+  private renderHeader(gameState: GameState): string {
     const statusColor = gameState.status === 'completed' ? 'green' :
                        gameState.status === 'failed' ? 'red' : 'yellow';
 
-    const title = chalk.hex(theme.accentStrong).bold(`🎮 ${scenario.name}`);
+    const title = chalk.hex(theme.accentStrong).bold(`\uD83C\uDFAE Game ${gameState.scenarioId}`);
     const turn = chalk.hex(theme.muted)(`Turn ${gameState.turnCount}`);
     const agent = chalk.hex(theme.muted)(`Agent: ${gameState.agentId}`);
     const status = chalk[statusColor](gameState.status.replace('_', ' ').toUpperCase());
@@ -58,7 +70,7 @@ export class MapRenderer {
   /**
    * Render the ASCII map
    */
-  private renderMap(gameState: GameState, allRooms: Room[]): string {
+  private renderMap(currentRoomId: string, roomsVisited: string[], allRooms: Room[]): string {
     // Calculate map bounds
     const positions = allRooms.map((r) => r.position);
     const minX = Math.min(...positions.map((p) => p.x));
@@ -76,7 +88,7 @@ export class MapRenderer {
 
     // Place rooms on grid
     for (const room of allRooms) {
-      this.placeRoom(grid, room, gameState, minX, minY);
+      this.placeRoom(grid, room, currentRoomId, roomsVisited, minX, minY);
     }
 
     // Convert grid to string
@@ -89,22 +101,23 @@ export class MapRenderer {
   private placeRoom(
     grid: string[][],
     room: Room,
-    gameState: GameState,
+    currentRoomId: string,
+    roomsVisited: string[],
     minX: number,
     minY: number
   ): void {
     const x = (room.position.x - minX) * 12;
     const y = (room.position.y - minY) * 5;
 
-    const visited = gameState.roomsVisited.includes(room.id);
-    const isCurrent = gameState.currentRoom === room.id;
+    const visited = roomsVisited.includes(room.id);
+    const isCurrent = currentRoomId === room.id;
     const isExit = room.isExit;
 
     // Determine room symbol
     let symbol = '?';
     if (isCurrent) symbol = '@';
-    else if (isExit) symbol = '🚪';
-    else if (visited) symbol = '·';
+    else if (isExit) symbol = '\uD83D\uDEAA';
+    else if (visited) symbol = '\u00B7';
 
     // Determine room color
     let roomName = room.name;
@@ -128,19 +141,19 @@ export class MapRenderer {
             ? chalk.hex(theme.signal)
             : chalk.hex(theme.muted);
 
-      this.setGrid(grid, x, y, boxColor('┌─────────┐'));
-      this.setGrid(grid, x, y + 1, boxColor(`│ ${this.pad(roomName, 7)} │`));
-      this.setGrid(grid, x, y + 2, boxColor(`│    ${symbol}    │`));
-      this.setGrid(grid, x, y + 3, boxColor('└─────────┘'));
+      this.setGrid(grid, x, y, boxColor('\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510'));
+      this.setGrid(grid, x, y + 1, boxColor(`\u2502 ${this.pad(roomName, 7)} \u2502`));
+      this.setGrid(grid, x, y + 2, boxColor(`\u2502    ${symbol}    \u2502`));
+      this.setGrid(grid, x, y + 3, boxColor('\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518'));
 
       // Draw connections
-      this.drawConnections(grid, room, gameState, x, y, minX, minY);
+      this.drawConnections(grid, room, x, y);
     } else {
       // Unknown room - just show placeholder
       const muted = chalk.hex(theme.muted);
-      this.setGrid(grid, x + 2, y + 1, muted('┌───┐'));
-      this.setGrid(grid, x + 2, y + 2, muted(`│ ${symbol} │`));
-      this.setGrid(grid, x + 2, y + 3, muted('└───┘'));
+      this.setGrid(grid, x + 2, y + 1, muted('\u250C\u2500\u2500\u2500\u2510'));
+      this.setGrid(grid, x + 2, y + 2, muted(`\u2502 ${symbol} \u2502`));
+      this.setGrid(grid, x + 2, y + 3, muted('\u2514\u2500\u2500\u2500\u2518'));
     }
   }
 
@@ -150,33 +163,30 @@ export class MapRenderer {
   private drawConnections(
     grid: string[][],
     room: Room,
-    _gameState: GameState,
     x: number,
     y: number,
-    _minX: number,
-    _minY: number
   ): void {
     // North
     if (room.exits.includes('north')) {
-      this.setGrid(grid, x + 5, y - 1, chalk.hex(theme.muted)('│'));
+      this.setGrid(grid, x + 5, y - 1, chalk.hex(theme.muted)('\u2502'));
     }
 
     // South
     if (room.exits.includes('south')) {
-      this.setGrid(grid, x + 5, y + 4, chalk.hex(theme.muted)('│'));
+      this.setGrid(grid, x + 5, y + 4, chalk.hex(theme.muted)('\u2502'));
     }
 
     // East
     if (room.exits.includes('east')) {
       for (let i = 1; i <= 2; i++) {
-        this.setGrid(grid, x + 11 + i, y + 2, chalk.hex(theme.muted)('─'));
+        this.setGrid(grid, x + 11 + i, y + 2, chalk.hex(theme.muted)('\u2500'));
       }
     }
 
     // West
     if (room.exits.includes('west')) {
       for (let i = 1; i <= 2; i++) {
-        this.setGrid(grid, x - i, y + 2, chalk.hex(theme.muted)('─'));
+        this.setGrid(grid, x - i, y + 2, chalk.hex(theme.muted)('\u2500'));
       }
     }
   }
@@ -207,7 +217,7 @@ export class MapRenderer {
   /**
    * Render current room details
    */
-  private renderRoomDetails(room: Room, gameState: GameState): string {
+  private renderRoomDetails(room: Room, inventory: string[], challengesCompleted: string[]): string {
     const lines: string[] = [];
 
     lines.push(chalk.hex(theme.accentStrong).bold(`Current Room: ${room.name}`));
@@ -215,9 +225,8 @@ export class MapRenderer {
     lines.push('');
 
     // Exits
-    const exits = Object.keys(room.exits);
-    if (exits.length > 0) {
-      lines.push(`Exits: ${chalk.hex(theme.accent)(exits.join(', '))}`);
+    if (room.exits.length > 0) {
+      lines.push(`Exits: ${chalk.hex(theme.accent)(room.exits.join(', '))}`);
     }
 
     // Objects
@@ -229,18 +238,18 @@ export class MapRenderer {
     // Challenges
     if (room.challenges.length > 0) {
       const challengeStatus = room.challenges.map((cId) => {
-        const completed = gameState.challengesCompleted.includes(cId);
+        const completed = challengesCompleted.includes(cId);
         return completed
-          ? chalk.hex(theme.ink)(`✓ ${cId}`)
-          : chalk.hex(theme.accent)(`⚡ ${cId}`);
+          ? chalk.hex(theme.ink)(`\u2713 ${cId}`)
+          : chalk.hex(theme.accent)(`\u26A1 ${cId}`);
       });
       lines.push(`Challenges: ${challengeStatus.join(', ')}`);
     }
 
     // Inventory
     lines.push('');
-    if (gameState.inventory.length > 0) {
-      lines.push(`Inventory: ${chalk.hex(theme.accent)(gameState.inventory.join(', '))}`);
+    if (inventory.length > 0) {
+      lines.push(`Inventory: ${chalk.hex(theme.accent)(inventory.join(', '))}`);
     } else {
       lines.push(chalk.hex(theme.muted)('Inventory: empty'));
     }
@@ -251,22 +260,28 @@ export class MapRenderer {
   /**
    * Render status bar
    */
-  private renderStatusBar(gameState: GameState, scenario: Scenario): string {
+  private renderStatusBar(
+    gameState: GameState,
+    allRooms: Room[],
+    challengesCompleted: string[],
+    roomsVisited: string[],
+    hintsUsed: number,
+  ): string {
     const lines: string[] = [];
 
-    const challengesTotal = scenario.challenges.length;
-    const challengesCompleted = gameState.challengesCompleted.length;
-    const roomsTotal = scenario.rooms.length;
-    const roomsVisited = gameState.roomsVisited.length;
+    // Count challenges across all rooms
+    const allChallengeIds = new Set(allRooms.flatMap(r => r.challenges));
+    const challengesTotal = allChallengeIds.size;
+    const roomsTotal = allRooms.length;
 
     lines.push(
-      `Challenges: ${chalk.hex(theme.accent)(`${challengesCompleted}/${challengesTotal}`)}  ` +
-        `Rooms Explored: ${chalk.hex(theme.accent)(`${roomsVisited}/${roomsTotal}`)}`
+      `Challenges: ${chalk.hex(theme.accent)(`${challengesCompleted.length}/${challengesTotal}`)}  ` +
+        `Rooms Explored: ${chalk.hex(theme.accent)(`${roomsVisited.length}/${roomsTotal}`)}`
     );
 
     lines.push(
       `Score: ${chalk.hex(theme.accentStrong)(gameState.score.toString())}  ` +
-        `Hints Used: ${chalk.hex(theme.signal)(gameState.hintsUsed.toString())}`
+        `Hints Used: ${chalk.hex(theme.signal)(hintsUsed.toString())}`
     );
 
     return lines.join('\n');
@@ -276,7 +291,7 @@ export class MapRenderer {
    * Render action result
    */
   renderActionResult(success: boolean, message: string): string {
-    const icon = success ? chalk.green('✓') : chalk.red('✗');
+    const icon = success ? chalk.green('\u2713') : chalk.red('\u2717');
     return `${icon} ${message}`;
   }
 

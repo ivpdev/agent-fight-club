@@ -6,8 +6,12 @@ TODO:
 - implement agent builder   
 - implement multiplayer
 - workout good challenges
+- think of cli design (should meta commands be available from the game cli?)
+- cleanup libarary commands from API
+- remove connecting to server from webcli
 - create train/test rooms
 - make production ready
+
 
 
 COMPLETED:

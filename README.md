@@ -39,6 +39,3 @@ See [SPEC.md](./SPEC.md) for complete architecture and API documentation.
 - Interactive CLI for human play
 - Support for custom agents in any language
 
-## License
-
-MIT

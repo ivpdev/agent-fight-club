@@ -12,6 +12,7 @@ import { CLISessionManager } from './CLISessionManager';
 import { scenarios } from '../scenarios';
 import {
   CreateGameRequest,
+  CommandRequest,
   MoveRequest,
   ExamineRequest,
   InteractRequest,
@@ -53,15 +54,13 @@ io.on('connection', (socket) => {
     // Send current game state immediately upon subscription
     const gameState = gameEngine.getGame(gameId);
     const scenario = gameEngine.getScenario(gameState?.scenarioId || '');
-    const currentRoom = gameEngine.getCurrentRoom(gameId);
-    const allRooms = gameEngine.getAllRooms(gameId);
+    const scenarioState = gameEngine.getScenarioState(gameId);
 
-    if (gameState && scenario && currentRoom) {
+    if (gameState && scenario) {
       socket.emit('gameStateUpdate', {
         gameState,
         scenario,
-        currentRoom,
-        allRooms,
+        scenarioState,
       });
       console.log(`Sent initial game state to client ${socket.id}`);
     }
@@ -76,16 +75,29 @@ io.on('connection', (socket) => {
 const emitGameStateUpdate = (gameId: string) => {
   const gameState = gameEngine.getGame(gameId);
   const scenario = gameEngine.getScenario(gameState?.scenarioId || '');
-  const currentRoom = gameEngine.getCurrentRoom(gameId);
-  const allRooms = gameEngine.getAllRooms(gameId);
+  const scenarioState = gameEngine.getScenarioState(gameId);
 
-  if (gameState && scenario && currentRoom) {
+  if (gameState && scenario) {
     io.to(`game:${gameId}`).emit('gameStateUpdate', {
       gameState,
       scenario,
-      currentRoom,
-      allRooms,
+      scenarioState,
     });
+  }
+};
+
+// Helper: render visualization if escape room state is available
+const renderVisualization = (gameId: string) => {
+  const gameState = gameEngine.getGame(gameId);
+  const scenario = gameEngine.getScenario(gameState?.scenarioId || '');
+  const scenarioState = gameEngine.getScenarioState(gameId);
+
+  if (gameState && scenario && scenarioState?.allRooms) {
+    const visualization = renderer.render(
+      gameState,
+      scenarioState,
+    );
+    console.log('\n' + visualization + '\n');
   }
 };
 
@@ -236,41 +248,25 @@ app.post('/games', (req: Request, res: Response) => {
       });
     }
 
-    const gameState = gameEngine.createGame(agentId, scenarioId);
-    const scenario = gameEngine.getScenario(scenarioId);
-    const currentRoom = gameEngine.getCurrentRoom(gameState.gameId);
+    const { gameState, initialMessage } = gameEngine.createGame(agentId, scenarioId);
+    const scenarioState = gameEngine.getScenarioState(gameState.gameId);
 
-    if (!scenario || !currentRoom) {
-      return res.status(500).json({
-        error: 'internal_error',
-        message: 'Failed to initialize game',
-      });
-    }
-
-    // Render initial visualization
-    const allRooms = gameEngine.getAllRooms(gameState.gameId);
-    const visualization = renderer.render(gameState, scenario, currentRoom, allRooms);
-    console.log('\n' + visualization + '\n');
+    // Render initial visualization (if escape room)
+    renderVisualization(gameState.gameId);
 
     // Emit initial game state to WebSocket clients
     emitGameStateUpdate(gameState.gameId);
 
     res.status(201).json({
       gameId: gameState.gameId,
+      initialMessage,
       initialState: {
         gameId: gameState.gameId,
         status: gameState.status,
-        currentRoom: {
-          id: currentRoom.id,
-          name: currentRoom.name,
-          description: currentRoom.description,
-          visibleObjects: currentRoom.objects.map((o) => o.name),
-          exits: currentRoom.exits,
-        },
-        inventory: gameState.inventory,
         turnCount: gameState.turnCount,
         elapsedTimeMs: 0,
         score: gameState.score,
+        scenarioState: scenarioState || {},
       },
     });
   } catch (error) {
@@ -293,28 +289,15 @@ app.get('/games/:gameId', (req: Request, res: Response) => {
       });
     }
 
-    const currentRoom = gameEngine.getCurrentRoom(gameId);
-    if (!currentRoom) {
-      return res.status(500).json({
-        error: 'internal_error',
-        message: 'Current room not found',
-      });
-    }
+    const scenarioState = gameEngine.getScenarioState(gameId) || {};
 
     res.json({
       gameId: gameState.gameId,
       status: gameState.status,
-      currentRoom: {
-        id: currentRoom.id,
-        name: currentRoom.name,
-        description: currentRoom.description,
-        visibleObjects: currentRoom.objects.map((o) => o.name),
-        exits: currentRoom.exits,
-      },
-      inventory: gameState.inventory,
       turnCount: gameState.turnCount,
       elapsedTimeMs: Date.now() - gameState.startTime,
       score: gameState.score,
+      scenarioState,
     });
   } catch (error) {
     handleError(res, error);
@@ -322,9 +305,36 @@ app.get('/games/:gameId', (req: Request, res: Response) => {
 });
 
 /**
- * Move action
+ * Generic command endpoint
  */
-app.post('/games/:gameId/move', (req: Request, res: Response) => {
+app.post('/games/:gameId/command', async (req: Request, res: Response) => {
+  try {
+    const { gameId } = req.params;
+    const { command, args }: CommandRequest = req.body;
+
+    if (!command) {
+      return res.status(400).json({
+        error: 'bad_request',
+        message: 'command is required',
+      });
+    }
+
+    const result = await gameEngine.executeCommand(gameId, command, args || []);
+
+    renderVisualization(gameId);
+    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
+    emitGameStateUpdate(gameId);
+
+    res.json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/**
+ * Move action (legacy - delegates to generic command)
+ */
+app.post('/games/:gameId/move', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const { direction }: MoveRequest = req.body;
@@ -336,22 +346,10 @@ app.post('/games/:gameId/move', (req: Request, res: Response) => {
       });
     }
 
-    const result = gameEngine.move(gameId, direction);
+    const result = await gameEngine.executeCommand(gameId, 'move', [direction]);
 
-    // Render visualization
-    const gameState = gameEngine.getGame(gameId);
-    const scenario = gameEngine.getScenario(gameState!.scenarioId);
-    const currentRoom = gameEngine.getCurrentRoom(gameId);
-
-    if (gameState && scenario && currentRoom) {
-      const allRooms = gameEngine.getAllRooms(gameId);
-      const visualization = renderer.render(gameState, scenario, currentRoom, allRooms);
-      const actionResult = renderer.renderActionResult(result.success, result.message);
-      console.log('\n' + visualization);
-      console.log('\n' + actionResult + '\n');
-    }
-
-    // Emit game state update to WebSocket clients
+    renderVisualization(gameId);
+    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
     emitGameStateUpdate(gameId);
 
     res.json(result);
@@ -361,17 +359,18 @@ app.post('/games/:gameId/move', (req: Request, res: Response) => {
 });
 
 /**
- * Examine action
+ * Examine action (legacy - delegates to generic command)
  */
-app.post('/games/:gameId/examine', (req: Request, res: Response) => {
+app.post('/games/:gameId/examine', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const { target }: ExamineRequest = req.body;
 
-    const result = gameEngine.examine(gameId, target);
+    const args = target ? [target] : [];
+    const result = await gameEngine.executeCommand(gameId, 'examine', args);
 
-    // Render result
     console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
+    emitGameStateUpdate(gameId);
 
     res.json(result);
   } catch (error) {
@@ -380,9 +379,9 @@ app.post('/games/:gameId/examine', (req: Request, res: Response) => {
 });
 
 /**
- * Interact action (take or use object)
+ * Interact action (legacy - delegates to generic command)
  */
-app.post('/games/:gameId/interact', (req: Request, res: Response) => {
+app.post('/games/:gameId/interact', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const { objectId, action, useWith }: InteractRequest = req.body;
@@ -394,26 +393,10 @@ app.post('/games/:gameId/interact', (req: Request, res: Response) => {
       });
     }
 
-    const result = gameEngine.interact(gameId, objectId, action, useWith);
+    const result = await gameEngine.executeCommand(gameId, action, [objectId, ...(useWith ? [useWith] : [])]);
 
-    // Render visualization if successful
-    if (result.success) {
-      const gameState = gameEngine.getGame(gameId);
-      const scenario = gameEngine.getScenario(gameState!.scenarioId);
-      const currentRoom = gameEngine.getCurrentRoom(gameId);
-
-      if (gameState && scenario && currentRoom) {
-        const allRooms = gameEngine.getAllRooms(gameId);
-        const visualization = renderer.render(gameState, scenario, currentRoom, allRooms);
-        const actionResult = renderer.renderActionResult(result.success, result.message);
-        console.log('\n' + visualization);
-        console.log('\n' + actionResult + '\n');
-      }
-    } else {
-      console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
-    }
-
-    // Emit game state update to WebSocket clients
+    renderVisualization(gameId);
+    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
     emitGameStateUpdate(gameId);
 
     res.json(result);
@@ -423,9 +406,9 @@ app.post('/games/:gameId/interact', (req: Request, res: Response) => {
 });
 
 /**
- * Solve challenge
+ * Solve challenge (legacy - delegates to generic command)
  */
-app.post('/games/:gameId/solve', (req: Request, res: Response) => {
+app.post('/games/:gameId/solve', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const { challengeId, solution }: SolveRequest = req.body;
@@ -437,22 +420,10 @@ app.post('/games/:gameId/solve', (req: Request, res: Response) => {
       });
     }
 
-    const result = gameEngine.solve(gameId, challengeId, solution);
+    const result = await gameEngine.executeCommand(gameId, 'solve', [challengeId, solution]);
 
-    // Render visualization
-    const gameState = gameEngine.getGame(gameId);
-    const scenario = gameEngine.getScenario(gameState!.scenarioId);
-    const currentRoom = gameEngine.getCurrentRoom(gameId);
-
-    if (gameState && scenario && currentRoom) {
-      const allRooms = gameEngine.getAllRooms(gameId);
-      const visualization = renderer.render(gameState, scenario, currentRoom, allRooms);
-      const actionResult = renderer.renderActionResult(result.success, result.message);
-      console.log('\n' + visualization);
-      console.log('\n' + actionResult + '\n');
-    }
-
-    // Emit game state update to WebSocket clients
+    renderVisualization(gameId);
+    console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
     emitGameStateUpdate(gameId);
 
     res.json(result);
@@ -462,9 +433,9 @@ app.post('/games/:gameId/solve', (req: Request, res: Response) => {
 });
 
 /**
- * Get hint for challenge
+ * Get hint for challenge (legacy - delegates to generic command)
  */
-app.post('/games/:gameId/hint', (req: Request, res: Response) => {
+app.post('/games/:gameId/hint', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const { challengeId } = req.body;
@@ -476,9 +447,10 @@ app.post('/games/:gameId/hint', (req: Request, res: Response) => {
       });
     }
 
-    const result = gameEngine.getHint(gameId, challengeId);
+    const result = await gameEngine.executeCommand(gameId, 'hint', [challengeId]);
 
     console.log('\n' + renderer.renderActionResult(result.success, result.message) + '\n');
+    emitGameStateUpdate(gameId);
 
     res.json(result);
   } catch (error) {
@@ -487,9 +459,9 @@ app.post('/games/:gameId/hint', (req: Request, res: Response) => {
 });
 
 /**
- * Get inventory
+ * Get inventory (legacy - delegates to generic command)
  */
-app.get('/games/:gameId/inventory', (req: Request, res: Response) => {
+app.get('/games/:gameId/inventory', async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params;
     const gameState = gameEngine.getGame(gameId);
@@ -501,9 +473,10 @@ app.get('/games/:gameId/inventory', (req: Request, res: Response) => {
       });
     }
 
-    res.json({
-      inventory: gameState.inventory,
-    });
+    const scenarioState = gameEngine.getScenarioState(gameId) || {};
+    const inventory = (scenarioState.inventory as string[]) || [];
+
+    res.json({ inventory });
   } catch (error) {
     handleError(res, error);
   }
