@@ -58,3 +58,7 @@ Would you like me to proceed with this refactoring?"
 - **IGNORE all TODOs** when implementing specifications
 - Only implement what is explicitly specified, not what is marked as TODO
 - Do not mention or ask about TODOs unless specifically relevant to current work
+
+## Testing
+
+**IMPORTANT:** After making any code change, run `npm test` from the project root and ensure all tests pass before considering the task done.

@@ -13,7 +13,7 @@
     "start": "node dist/server/index.js",
     "play": "tsx src/cli/index.ts",
     "play:visual": "tsx src/cli/index.ts --visualize",
-    "test": "jest",
+    "test": "tsx src/test/smoke.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
