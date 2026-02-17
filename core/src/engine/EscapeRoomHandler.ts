@@ -100,6 +100,11 @@ export class EscapeRoomHandler implements ScenarioHandler {
       case 'use':
         return this.interact(args.join(' '), 'use');
 
+      case 'help':
+      case 'h':
+      case '?':
+        return { success: true, message: this.getHelp(), turnCount: 0 };
+
       case 'inventory':
       case 'i':
       case 'inv':

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import OpenAI from "openai";
-import { ActionResult } from "@afc/core/types";
+import { ActionResult, GameStatsResponse } from "@afc/core/types";
 
 const API_BASE = "http://localhost:3000";
 const MAX_TURNS = 30;
@@ -12,13 +12,14 @@ const openrouter = new OpenAI({
 });
 
 // Model to use - easy to swap
-const MODEL = "anthropic/claude-3-5-haiku";
+const MODEL = "google/gemini-3-flash-preview";
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
 // ANSI colors for console output
 const ENV_COLOR = "\x1b[36m";   // cyan
 const AGENT_COLOR = "\x1b[33m"; // yellow
+const STATS_COLOR = "\x1b[32m"; // green
 const RESET = "\x1b[0m";
 
 // System prompt - the agent plays like a human typing commands
@@ -30,12 +31,11 @@ Available commands:
   move <direction>     Move north/south/east/west
   take <object>        Pick up an object
   use <object>         Use an object
-  inventory            Check your inventory
+  inventory            Check y our inventory
   solve <id> <answer>  Solve a challenge (use examine to see IDs)
   hint <id>            Get a hint for a challenge
 
 Respond with ONLY a single command. No explanation.
-When solving challenge don't try to guess the challeng name, just pay attention on "Challenges" information from the previous message.
 `;
 
 // Parse LLM response into command + args
@@ -104,6 +104,23 @@ export async function runAgent(gameId: string) {
       console.log(`${ENV_COLOR}[environment] Max turns (${MAX_TURNS}) reached.${RESET}`);
       break;
     }
+  }
+
+  await printStats(gameId);
+}
+
+// Fetch and print game stats
+async function printStats(gameId: string) {
+  const statsRes = await fetch(`${API_BASE}/games/${gameId}/stats`);
+  if (statsRes.ok) {
+    const stats = await statsRes.json() as GameStatsResponse;
+    const seconds = (stats.timeSpentMs / 1000).toFixed(1);
+    console.log(`\n${STATS_COLOR}--- Game Stats ---`);
+    console.log(`Status:     ${stats.status}`);
+    console.log(`Turns:      ${stats.turnCount}`);
+    console.log(`Time spent: ${seconds}s`);
+    console.log(`Score:      ${stats.score}`);
+    console.log(`---${RESET}\n`);
   }
 }
 

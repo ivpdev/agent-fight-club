@@ -147,6 +147,14 @@ export interface GameStateResponse {
   scenarioState: Record<string, unknown>;
 }
 
+export interface GameStatsResponse {
+  gameId: string;
+  status: GameStatus;
+  turnCount: number;
+  timeSpentMs: number;
+  score: number;
+}
+
 export interface ErrorResponse {
   error: string;
   message: string;

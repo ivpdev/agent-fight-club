@@ -1,6 +1,8 @@
 TODO:
 - implement web-cli
 - implement agent using cli-api
+- fix missing challenge ids in the environment
+- disallow agent fetching the game state
 - implement game results capturing (agents runs the game via API -> results are persisted)
 - think about session management (currently game sessions are held in memory)
 - implement agent builder   

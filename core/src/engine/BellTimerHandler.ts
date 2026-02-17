@@ -41,6 +41,10 @@ export class BellTimerHandler implements ScenarioHandler {
         return this.setTimer(args[0]);
       case 'w':
         return await this.wait();
+      case 'help':
+      case 'h':
+      case '?':
+        return { success: true, message: this.getHelp(), turnCount: 0 };
       default:
         return {
           success: false,

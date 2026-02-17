@@ -14,6 +14,7 @@ import {
   CreateGameRequest,
   CommandRequest,
   ErrorResponse,
+  GameStatsResponse,
 } from '../types';
 
 const app = express();
@@ -295,6 +296,43 @@ app.get('/games/:gameId', (req: Request, res: Response) => {
       score: gameState.score,
       scenarioState,
     });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/**
+ * Get stats for a finished game
+ */
+app.get('/games/:gameId/stats', (req: Request, res: Response) => {
+  try {
+    const { gameId } = req.params;
+    const gameState = gameEngine.getGame(gameId);
+
+    if (!gameState) {
+      return res.status(404).json({
+        error: 'game_not_found',
+        message: `Game ${gameId} does not exist`,
+      });
+    }
+
+    if (gameState.status === 'in_progress') {
+      return res.status(400).json({
+        error: 'game_in_progress',
+        message: 'Stats are only available for finished games',
+      });
+    }
+
+    const endTime = gameState.endTime ?? Date.now();
+    const stats: GameStatsResponse = {
+      gameId: gameState.gameId,
+      status: gameState.status,
+      turnCount: gameState.turnCount,
+      timeSpentMs: endTime - gameState.startTime,
+      score: gameState.score,
+    };
+
+    res.json(stats);
   } catch (error) {
     handleError(res, error);
   }

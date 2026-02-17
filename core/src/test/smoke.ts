@@ -163,6 +163,22 @@ async function testGameAPI() {
   assert(finalState.data.status === 'completed', 'final game status is completed');
   assert(finalState.data.score > 0, `final score is positive (${finalState.data.score})`);
   assert(finalState.data.turnCount > 0, `turns were counted (${finalState.data.turnCount})`);
+
+  // Get stats for finished game
+  const stats = await request('GET', `/games/${gameId}/stats`);
+  assert(stats.status === 200, 'GET /games/:id/stats returns 200');
+  assert(stats.data.status === 'completed', 'stats status is completed');
+  assert(stats.data.turnCount > 0, `stats turnCount is positive (${stats.data.turnCount})`);
+  assert(stats.data.timeSpentMs > 0, `stats timeSpentMs is positive (${stats.data.timeSpentMs})`);
+  assert(stats.data.score > 0, `stats score is positive (${stats.data.score})`);
+
+  // Stats should fail for in-progress game
+  const newGame = await request('POST', '/games', {
+    agentId: 'smoke-test',
+    scenarioId: 'library_escape',
+  });
+  const inProgressStats = await request('GET', `/games/${newGame.data.gameId}/stats`);
+  assert(inProgressStats.status === 400, 'GET /games/:id/stats returns 400 for in-progress game');
 }
 
 // ---------------------------------------------------------------------------
