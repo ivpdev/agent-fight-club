@@ -30,19 +30,64 @@ AVAILABLE ACTIONS:
 
 Respond with ONLY a JSON object for your next action. No explanation.`;
 
-// Format current state as user message
+type RoomData = {
+  name: string;
+  description: string;
+  exits: string[];
+  objects: { id: string; name: string }[];
+  challenges: string[];
+};
+
+type ScenarioState = {
+  currentRoomData: RoomData;
+  inventory: string[];
+  challengesCompleted: string[];
+};
+
+// Format current state as user message (sent to LLM)
 function formatState(state: GameStateResponse): string {
+  const ss = state.scenarioState as ScenarioState;
+  const room = ss.currentRoomData;
+  const objects = room.objects.map(o => o.name);
   return `CURRENT STATE:
-- Room: ${state.currentRoom.name}
-- Description: ${state.currentRoom.description}
-- Objects here: ${state.currentRoom.visibleObjects.join(", ") || "none"}
-- Exits: ${state.currentRoom.exits.join(", ")}
-- Inventory: ${state.inventory.join(", ") || "empty"}
+- Room: ${room.name}
+- Description: ${room.description}
+- Objects here: ${objects.join(", ") || "none"}
+- Exits: ${room.exits.join(", ")}
+- Inventory: ${ss.inventory.join(", ") || "empty"}
 - Turns used: ${state.turnCount}`;
 }
 
-// Parse LLM response into action
-function parseAction(response: string): { endpoint: string; body: object } | null {
+// Log environment state (room info) to console
+function logEnvironment(state: GameStateResponse): void {
+  const ss = state.scenarioState as ScenarioState;
+  const room = ss.currentRoomData;
+  const parts: string[] = [room.description];
+  parts.push(`Exits: ${room.exits.join(", ")}`);
+  if (room.objects.length > 0)
+    parts.push(`Objects: ${room.objects.map(o => o.name).join(", ")}`);
+  if (room.challenges.length > 0) {
+    const unsolved = room.challenges.filter(c => !ss.challengesCompleted.includes(c));
+    if (unsolved.length > 0)
+      parts.push(`Challenges: ${unsolved.join(", ")}`);
+  }
+  if (ss.inventory.length > 0)
+    parts.push(`Inventory: ${ss.inventory.join(", ")}`);
+  console.log(`${ENV_COLOR}[environment] ${parts.join(`\n             `)}${RESET}`);
+}
+
+// ANSI colors for console output
+const ENV_COLOR = "\x1b[36m";   // cyan
+const AGENT_COLOR = "\x1b[33m"; // yellow
+const RESET = "\x1b[0m";
+
+// Format agent action as a short command string
+function formatAction(action: { command: string; args: string[] }): string {
+  return [action.command, ...action.args].join(" ");
+}
+
+// Parse LLM response into a command for the /command endpoint
+function parseAction(response: string): { command: string; args: string[] } | null {
   try {
     // Handle markdown code blocks
     let cleaned = response.trim();
@@ -55,13 +100,13 @@ function parseAction(response: string): { endpoint: string; body: object } | nul
 
     switch (action) {
       case "move":
-        return { endpoint: "move", body: { direction: params.direction } };
+        return { command: "move", args: [params.direction] };
       case "examine":
-        return { endpoint: "examine", body: { target: params.target } };
+        return { command: "examine", args: [params.target] };
       case "interact":
-        return { endpoint: "interact", body: { objectId: params.objectId, action: params.interactAction } };
+        return { command: params.interactAction, args: [params.objectId] };
       case "solve":
-        return { endpoint: "solve", body: { challengeId: params.challengeId, solution: params.solution } };
+        return { command: "solve", args: [params.challengeId, params.solution] };
       default:
         return null;
     }
@@ -84,17 +129,18 @@ export async function runAgent(gameId: string) {
 
     // Check if game ended
     if (state.status !== "in_progress") {
-      console.log(`Game ended: ${state.status}, Score: ${state.score}`);
+      console.log(`${ENV_COLOR}[environment] Game ended: ${state.status}, Score: ${state.score}${RESET}`);
       break;
     }
 
     // Check turn limit
     if (state.turnCount >= MAX_TURNS) {
-      console.log(`Max turns (${MAX_TURNS}) reached. Stopping.`);
+      console.log(`${ENV_COLOR}[environment] Max turns (${MAX_TURNS}) reached. Stopping.${RESET}`);
       break;
     }
 
-    // 2. Add current state to message history
+    // 2. Log current environment state and add to message history
+    logEnvironment(state);
     messages.push({ role: "user", content: formatState(state) });
 
     // 3. Call LLM with full history
@@ -112,21 +158,21 @@ export async function runAgent(gameId: string) {
     // 5. Parse action
     const action = parseAction(llmResponse);
     if (!action) {
-      console.log("Failed to parse action:", llmResponse);
+      console.log(`${AGENT_COLOR}[agent] (invalid) ${llmResponse}${RESET}`);
       // Add feedback to history so agent can learn
       messages.push({ role: "user", content: "Invalid action format. Please respond with valid JSON." });
       continue;
     }
 
     // 6. Execute action
-    console.log(`Turn ${state.turnCount + 1}: ${action.endpoint}`, action.body);
-    const actionRes = await fetch(`${API_BASE}/games/${gameId}/${action.endpoint}`, {
+    console.log(`${AGENT_COLOR}[agent] ${formatAction(action)}${RESET}`);
+    const actionRes = await fetch(`${API_BASE}/games/${gameId}/command`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(action.body),
+      body: JSON.stringify({ command: action.command, args: action.args }),
     });
     const result = await actionRes.json() as ActionResult;
-    console.log(`  → ${result.message}`);
+    console.log(`${ENV_COLOR}[environment] ${result.message}${RESET}`);
 
     // 7. Add action result to history
     messages.push({ role: "user", content: `Result: ${result.message}` });
