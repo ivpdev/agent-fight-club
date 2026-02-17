@@ -1,12 +1,9 @@
 import "dotenv/config";
 import OpenAI from "openai";
-import {
-  GameStateResponse,
-  ActionResult,
-} from "@afc/core/types";
+import { ActionResult } from "@afc/core/types";
 
 const API_BASE = "http://localhost:3000";
-const MAX_TURNS = 20;
+const MAX_TURNS = 30;
 
 // OpenRouter client (OpenAI-compatible API)
 const openrouter = new OpenAI({
@@ -19,131 +16,59 @@ const MODEL = "anthropic/claude-3-5-haiku";
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
-// System prompt - describes the game and available actions
-const SYSTEM_PROMPT = `You are an AI agent in an escape room. Your goal: reach the exit.
-
-AVAILABLE ACTIONS:
-- {"action": "move", "direction": "north|south|east|west"}
-- {"action": "examine", "target": "<object_name>"}
-- {"action": "interact", "objectId": "<id>", "interactAction": "take|use"}
-- {"action": "solve", "challengeId": "<id>", "solution": "<answer>"}
-
-Respond with ONLY a JSON object for your next action. No explanation.`;
-
-type RoomData = {
-  name: string;
-  description: string;
-  exits: string[];
-  objects: { id: string; name: string }[];
-  challenges: string[];
-};
-
-type ScenarioState = {
-  currentRoomData: RoomData;
-  inventory: string[];
-  challengesCompleted: string[];
-};
-
-// Format current state as user message (sent to LLM)
-function formatState(state: GameStateResponse): string {
-  const ss = state.scenarioState as ScenarioState;
-  const room = ss.currentRoomData;
-  const objects = room.objects.map(o => o.name);
-  return `CURRENT STATE:
-- Room: ${room.name}
-- Description: ${room.description}
-- Objects here: ${objects.join(", ") || "none"}
-- Exits: ${room.exits.join(", ")}
-- Inventory: ${ss.inventory.join(", ") || "empty"}
-- Turns used: ${state.turnCount}`;
-}
-
-// Log environment state (room info) to console
-function logEnvironment(state: GameStateResponse): void {
-  const ss = state.scenarioState as ScenarioState;
-  const room = ss.currentRoomData;
-  const parts: string[] = [room.description];
-  parts.push(`Exits: ${room.exits.join(", ")}`);
-  if (room.objects.length > 0)
-    parts.push(`Objects: ${room.objects.map(o => o.name).join(", ")}`);
-  if (room.challenges.length > 0) {
-    const unsolved = room.challenges.filter(c => !ss.challengesCompleted.includes(c));
-    if (unsolved.length > 0)
-      parts.push(`Challenges: ${unsolved.join(", ")}`);
-  }
-  if (ss.inventory.length > 0)
-    parts.push(`Inventory: ${ss.inventory.join(", ")}`);
-  console.log(`${ENV_COLOR}[environment] ${parts.join(`\n             `)}${RESET}`);
-}
-
 // ANSI colors for console output
 const ENV_COLOR = "\x1b[36m";   // cyan
 const AGENT_COLOR = "\x1b[33m"; // yellow
 const RESET = "\x1b[0m";
 
-// Format agent action as a short command string
-function formatAction(action: { command: string; args: string[] }): string {
-  return [action.command, ...action.args].join(" ");
+// System prompt - the agent plays like a human typing commands
+const SYSTEM_PROMPT = `You are playing a text adventure escape room. Your goal: reach the exit.
+
+Available commands:
+  look                 Look around the current room
+  examine <target>     Examine an object or challenge
+  move <direction>     Move north/south/east/west
+  take <object>        Pick up an object
+  use <object>         Use an object
+  inventory            Check your inventory
+  solve <id> <answer>  Solve a challenge (use examine to see IDs)
+  hint <id>            Get a hint for a challenge
+
+Respond with ONLY a single command. No explanation.
+When solving challenge don't try to guess the challeng name, just pay attention on "Challenges" information from the previous message.
+`;
+
+// Parse LLM response into command + args
+function parseCommand(response: string): { command: string; args: string[] } | null {
+  const line = response.trim().split("\n")[0].trim();
+  if (!line) return null;
+  const parts = line.split(/\s+/);
+  return { command: parts[0], args: parts.slice(1) };
 }
 
-// Parse LLM response into a command for the /command endpoint
-function parseAction(response: string): { command: string; args: string[] } | null {
-  try {
-    // Handle markdown code blocks
-    let cleaned = response.trim();
-    if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
-
-    const json = JSON.parse(cleaned);
-    const { action, ...params } = json;
-
-    switch (action) {
-      case "move":
-        return { command: "move", args: [params.direction] };
-      case "examine":
-        return { command: "examine", args: [params.target] };
-      case "interact":
-        return { command: params.interactAction, args: [params.objectId] };
-      case "solve":
-        return { command: "solve", args: [params.challengeId, params.solution] };
-      default:
-        return null;
-    }
-  } catch {
-    return null;
-  }
+// Execute a command via the API
+async function executeCommand(gameId: string, command: string, args: string[]): Promise<ActionResult> {
+  const res = await fetch(`${API_BASE}/games/${gameId}/command`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ command, args }),
+  });
+  return await res.json() as ActionResult;
 }
 
 // Main agent loop
 export async function runAgent(gameId: string) {
-  // Message history - this is the memory!
   const messages: Message[] = [
     { role: "system", content: SYSTEM_PROMPT }
   ];
 
+  // Get initial room description with "look"
+  const initial = await executeCommand(gameId, "look", []);
+  console.log(`${ENV_COLOR}[environment] ${initial.message}${RESET}`);
+  messages.push({ role: "user", content: initial.message });
+
   while (true) {
-    // 1. Get current state
-    const stateRes = await fetch(`${API_BASE}/games/${gameId}`);
-    const state = await stateRes.json() as GameStateResponse;
-
-    // Check if game ended
-    if (state.status !== "in_progress") {
-      console.log(`${ENV_COLOR}[environment] Game ended: ${state.status}, Score: ${state.score}${RESET}`);
-      break;
-    }
-
-    // Check turn limit
-    if (state.turnCount >= MAX_TURNS) {
-      console.log(`${ENV_COLOR}[environment] Max turns (${MAX_TURNS}) reached. Stopping.${RESET}`);
-      break;
-    }
-
-    // 2. Log current environment state and add to message history
-    logEnvironment(state);
-    messages.push({ role: "user", content: formatState(state) });
-
-    // 3. Call LLM with full history
+    // 1. Call LLM
     const completion = await openrouter.chat.completions.create({
       model: MODEL,
       max_tokens: 150,
@@ -151,31 +76,34 @@ export async function runAgent(gameId: string) {
     });
 
     const llmResponse = completion.choices[0]?.message?.content ?? "";
-
-    // 4. Add assistant response to history
     messages.push({ role: "assistant", content: llmResponse });
 
-    // 5. Parse action
-    const action = parseAction(llmResponse);
-    if (!action) {
+    // 2. Parse command
+    const parsed = parseCommand(llmResponse);
+    if (!parsed) {
       console.log(`${AGENT_COLOR}[agent] (invalid) ${llmResponse}${RESET}`);
-      // Add feedback to history so agent can learn
-      messages.push({ role: "user", content: "Invalid action format. Please respond with valid JSON." });
+      messages.push({ role: "user", content: "Invalid command. Respond with a single command." });
       continue;
     }
 
-    // 6. Execute action
-    console.log(`${AGENT_COLOR}[agent] ${formatAction(action)}${RESET}`);
-    const actionRes = await fetch(`${API_BASE}/games/${gameId}/command`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ command: action.command, args: action.args }),
-    });
-    const result = await actionRes.json() as ActionResult;
-    console.log(`${ENV_COLOR}[environment] ${result.message}${RESET}`);
+    console.log(`${AGENT_COLOR}[agent] ${[parsed.command, ...parsed.args].join(" ")}${RESET}`);
 
-    // 7. Add action result to history
-    messages.push({ role: "user", content: `Result: ${result.message}` });
+    // 3. Execute command
+    const result = await executeCommand(gameId, parsed.command, parsed.args);
+    console.log(`${ENV_COLOR}[environment] ${result.message}${RESET}`);
+    messages.push({ role: "user", content: result.message });
+
+    // 4. Check game end
+    if (result.gameStatus && result.gameStatus !== "in_progress") {
+      console.log(`${ENV_COLOR}[environment] Game ended: ${result.gameStatus}${RESET}`);
+      break;
+    }
+
+    // 5. Check turn limit
+    if (result.turnCount >= MAX_TURNS) {
+      console.log(`${ENV_COLOR}[environment] Max turns (${MAX_TURNS}) reached.${RESET}`);
+      break;
+    }
   }
 }
 
