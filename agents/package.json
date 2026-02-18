@@ -7,7 +7,8 @@
     "build": "tsc",
     "dev": "tsx watch src",
     "memoryless": "tsx src/run-memoryless.ts",
-    "simple": "tsx src/run-simple-agent.ts"
+    "simple": "tsx src/run-simple-agent.ts",
+    "experiment": "tsx src/run-experiment.ts"
   },
   "dependencies": {
     "@afc/core": "1.0.0",

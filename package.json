@@ -17,6 +17,7 @@
     "play:visual": "npm run play:visual --workspace=core",
     "agent:memoryless": "npm run memoryless --workspace=agents",
     "agent:simple": "npm run simple --workspace=agents",
+    "challenge:experiment": "npm run experiment --workspace=agents --",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "npm run format --workspaces --if-present"

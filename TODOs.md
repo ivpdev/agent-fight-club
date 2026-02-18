@@ -17,6 +17,7 @@ TODO:
 - remove agent_id from the game creation endpoint
 - add tests
 - work on proper session closing (exit command)
+- deal with 429
 
 
 

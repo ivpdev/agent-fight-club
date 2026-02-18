@@ -1,0 +1,6 @@
+# google/gemini-3-flash-preview fail
+anthropic/claude-3.5-sonnet #ok, similar to opus
+anthropic/claude-opus-4.6
+# openai/gpt-oss-120b fail
+#anthropic/claude-3.5-haiku fail
+qwen/qwen-max
